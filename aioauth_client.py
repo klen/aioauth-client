@@ -271,6 +271,39 @@ class BitbucketClient(OAuth1Client):
     request_token_url = 'https://bitbucket.org/!api/1.0/oauth/request_token'
 
 
+class Flickr(OAuth1Client):
+
+    """ Support Flickr. """
+
+    access_token_url = 'http://www.flickr.com/services/oauth/request_token'
+    authorize_url = 'http://www.flickr.com/services/oauth/authorize'
+    base_url = 'https://api.flickr.com/'
+    name = 'flickr'
+    request_token_url = 'http://www.flickr.com/services/oauth/request_token'
+
+
+class Meetup(OAuth1Client):
+
+    """ Support Meetup. """
+
+    access_token_url = 'https://api.meetup.com/oauth/access/'
+    authorize_url = 'http://www.meetup.com/authorize/'
+    base_url = 'https://api.meetup.com/2/'
+    name = 'meetup'
+    request_token_url = 'https://api.meetup.com/oauth/request/'
+
+
+class Plurk(OAuth1Client):
+
+    """ Support Plurk. """
+
+    access_token_url = 'http://www.plurk.com/OAuth/access_token'
+    authorize_url = 'http://www.plurk.com/OAuth/authorize'
+    base_url = 'http://www.plurk.com/APP/'
+    name = 'plurk'
+    request_token_url = 'http://www.plurk.com/OAuth/request_token'
+
+
 class TwitterClient(OAuth1Client):
 
     """ Support Twitter. """
@@ -282,6 +315,39 @@ class TwitterClient(OAuth1Client):
     request_token_url = 'https://api.twitter.com/oauth/request_token'
 
 
+class TumblrClient(OAuth1Client):
+
+    """ Support Tumblr. """
+
+    access_token_url = 'http://www.tumblr.com/oauth/access_token'
+    authorize_url = 'http://www.tumblr.com/oauth/authorize'
+    base_url = 'https://api.tumblr.com/v2/'
+    name = 'tumblr'
+    request_token_url = 'http://www.tumblr.com/oauth/request_token'
+
+
+class VimeoClient(OAuth1Client):
+
+    """ Support Vimeo. """
+
+    access_token_url = 'https://vimeo.com/oauth/access_token'
+    authorize_url = 'https://vimeo.com/oauth/authorize'
+    base_url = 'https://vimeo.com/api/rest/v2/'
+    name = 'vimeo'
+    request_token_url = 'https://vimeo.com/oauth/request_token'
+
+
+class YahooClient(OAuth1Client):
+
+    """ Support Yahoo. """
+
+    access_token_url = 'https://api.login.yahoo.com/oauth/v2/get_token'
+    authorize_url = 'https://api.login.yahoo.com/oauth/v2/request_auth'
+    base_url = 'https://query.yahooapis.com/v1/'
+    name = 'yahoo'
+    request_token_url = 'https://api.login.yahoo.com/oauth/v2/get_request_token'
+
+
 class AmazonClient(OAuth2Client):
 
     """ Support Amazon. """
@@ -290,6 +356,16 @@ class AmazonClient(OAuth2Client):
     authorize_url = 'https://www.amazon.com/ap/oa'
     base_url = 'https://api.amazon.com/'
     name = 'amazon'
+
+
+class EventbriteClient(OAuth2Client):
+
+    """ Support Eventbrite. """
+
+    access_token_url = 'https://www.eventbrite.com/oauth/token'
+    authorize_url = 'https://www.eventbrite.com/oauth/authorize'
+    base_url = 'https://www.eventbriteapi.com/v3/'
+    name = 'eventbrite'
 
 
 class FacebookClient(OAuth2Client):
