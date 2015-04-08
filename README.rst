@@ -46,15 +46,6 @@ Installation
 Usage
 =====
 
-Example
--------
-
-Run example with command: ::
-
-    make run
-
-Open http://fuf.me:5000 in your browser.
-
 
 .. code:: python
 
@@ -117,6 +108,15 @@ Open http://fuf.me:5000 in your browser.
 
     user_info = github.request('GET', 'user')
 
+
+Example
+-------
+
+Run example with command: ::
+
+    make run
+
+Open http://fuf.me:5000 in your browser.
 
 .. _bugtracker:
 
