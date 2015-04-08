@@ -46,6 +46,16 @@ Installation
 Usage
 =====
 
+Example
+-------
+
+Run example with command: ::
+
+    make run
+
+Open http://fuf.me:5000 in your browser.
+
+
 .. code:: python
 
     # OAuth1
