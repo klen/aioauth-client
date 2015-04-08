@@ -1,0 +1,12 @@
+language: python
+
+python: 3.4
+
+branches:
+    only:
+        - master
+        - develop
+
+install: pip install -r requirements-tests.txt
+
+script: py.test tests.py
