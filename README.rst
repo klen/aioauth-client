@@ -46,7 +46,7 @@ Installation
 Usage
 =====
 
-::
+.. code:: python
 
     # OAuth1
 
@@ -66,7 +66,9 @@ Usage
     oauth_token, oauth_token_secret = yield from twitter.get_access_token(oauth_verifier)
 
     # Save the tokens for later use
+
     # ...
+
     twitter = Twitter(
         consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
         consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
@@ -76,7 +78,7 @@ Usage
 
     timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
 
-::
+.. code:: python
 
     # OAuth2
 
@@ -91,9 +93,10 @@ Usage
     # Reload client to authorize_url and get code
     # ...
 
-    otoken = github.get_access_token(code)
+    otoken = yield from github.get_access_token(code)
 
     # Save the token for later use
+
     # ...
 
     github = GithubClient(

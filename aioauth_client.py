@@ -1,15 +1,15 @@
-""" Support OAuth for AIOHTTP. """
+""" Support OAuth for Aiohttp. """
 
-import logging
-import aiohttp
-from aiohttp import web
-import hmac
-import base64
 import asyncio
+import base64
+import hmac
+import logging
 import time
+from hashlib import sha1
 from random import SystemRandom
 from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsplit
-from hashlib import sha1
+
+from aiohttp import web, request as aiorequest
 
 
 __version__ = "0.1.1"
@@ -152,7 +152,7 @@ class OAuth1Client(Client):
         params.update({'oauth_token': request_token or self.oauth_token})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None):
+    def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """ Request OAuth resouce. """
         oparams = {
             'oauth_consumer_key': self.consumer_key,
@@ -172,12 +172,12 @@ class OAuth1Client(Client):
             self.consumer_secret, method, url,
             oauth_token_secret=self.oauth_token_secret, **oparams)
         self.logger.debug("%s %s" % (url, oparams))
-        return aiohttp.request(method, url, params=oparams, headers=headers)
+        return aiorequest(method, url, params=oparams, headers=headers, **aio_kwargs)
 
     @asyncio.coroutine
-    def get_request_token(self, **params):
+    def get_request_token(self, loop=None, **params):
         """ Get a request_token and request_token_secret from OAuth provider. """
-        response = yield from self.request('GET', self.request_token_url, params=params)
+        response = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
         if response.status / 100 > 2:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 request token. HTTP status code: %s'
@@ -189,14 +189,14 @@ class OAuth1Client(Client):
         return self.oauth_token, self.oauth_token_secret
 
     @asyncio.coroutine
-    def get_access_token(self, oauth_verifier, request_token=None, **params):
+    def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
         """ Get an access_token from OAuth provider. """
         if request_token and self.oauth_token != request_token:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 access token. Request token is invalid')
 
         response = yield from self.request('POST', self.access_token_url, params={
-            'oauth_verifier': oauth_verifier, 'oauth_token': request_token})
+            'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
 
         data = yield from response.text()
         data = dict(parse_qsl(data))
@@ -229,7 +229,7 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None):
+    def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """ Request OAuth2 resource. """
         url = self._get_url(url)
         params = params or {}
@@ -241,16 +241,16 @@ class OAuth2Client(Client):
             'Accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
-        return aiohttp.request(method, url, params=params, headers=headers)
+        return aiorequest(method, url, params=params, headers=headers, **aio_kwargs)
 
     @asyncio.coroutine
-    def get_access_token(self, code, **params):
+    def get_access_token(self, code, loop=None, **params):
         """ Get access token from OAuth provider. """
         params.update({
             'client_id': self.client_id, 'client_secret': self.client_secret,
             'code': code
         })
-        response = yield from self.request('POST', self.access_token_url, params=params)
+        response = yield from self.request('POST', self.access_token_url, params=params, loop=loop)
         data = yield from response.json()
         try:
             self.access_token = data['access_token']
@@ -376,6 +376,16 @@ class FacebookClient(OAuth2Client):
     authorize_url = 'https://www.facebook.com/dialog/oauth'
     base_url = 'https://graph.facebook.com/me'
     name = 'facebook'
+
+
+class FoursquareClient(OAuth2Client):
+
+    """ Support Foursquare. """
+
+    access_token_url = 'https://foursquare.com/oauth2/access_token'
+    authorize_url = 'https://foursquare.com/oauth2/authenticate'
+    base_url = 'https://api.foursquare.com/v2/'
+    name = 'foursquare'
 
 
 class GithubClient(OAuth2Client):
