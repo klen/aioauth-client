@@ -12,7 +12,7 @@ from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsp
 from hashlib import sha1
 
 
-__version__ = "0.0.0"
+__version__ = "0.1.0"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
