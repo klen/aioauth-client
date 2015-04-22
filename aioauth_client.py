@@ -12,7 +12,7 @@ from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsp
 from aiohttp import web, request as aiorequest
 
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
