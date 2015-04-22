@@ -251,7 +251,13 @@ class OAuth2Client(Client):
             'code': code
         })
         response = yield from self.request('POST', self.access_token_url, params=params, loop=loop)
-        data = yield from response.json()
+        if 'json' in response.headers.get('CONTENT-TYPE'):
+            data = yield from response.json()
+
+        else:
+            data = yield from response.text()
+            data = dict(parse_qsl(data))
+
         try:
             self.access_token = data['access_token']
         except Exception:
@@ -374,7 +380,7 @@ class FacebookClient(OAuth2Client):
 
     access_token_url = 'https://graph.facebook.com/oauth/access_token'
     authorize_url = 'https://www.facebook.com/dialog/oauth'
-    base_url = 'https://graph.facebook.com/me'
+    base_url = 'https://graph.facebook.com/v2.3'
     name = 'facebook'
 
 
