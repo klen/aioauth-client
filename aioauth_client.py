@@ -228,7 +228,7 @@ class OAuth2Client(Client):
     def get_authorize_url(self, **params):
         """ Return a formatted authorize URL. """
         params = dict(self.params, **params)
-        params.update({'client_id': self.client_id})
+        params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
     def request(self, method, url, params=None, headers=None, **aio_kwargs):
@@ -246,13 +246,20 @@ class OAuth2Client(Client):
         return aiorequest(method, url, params=params, headers=headers, **aio_kwargs)
 
     @asyncio.coroutine
-    def get_access_token(self, code, loop=None, **params):
+    def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
         """ Get access token from OAuth provider. """
-        params.update({
-            'client_id': self.client_id, 'client_secret': self.client_secret,
-            'code': code
+        payload.setdefault('grant_type', 'authorization_code')
+        payload.update({
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'code': code,
         })
-        response = yield from self.request('POST', self.access_token_url, params=params, loop=loop)
+
+        redirect_uri = redirect_uri or self.params.get('redirect_uri')
+        if redirect_uri:
+            payload['redirect_uri'] = redirect_uri
+
+        response = yield from self.request('POST', self.access_token_url, data=payload, loop=loop)
         if 'json' in response.headers.get('CONTENT-TYPE'):
             data = yield from response.json()
 
@@ -270,7 +277,13 @@ class OAuth2Client(Client):
 
 class BitbucketClient(OAuth1Client):
 
-    """ Support Bitbucket. """
+    """ Support Bitbucket.
+
+    * Dashboard: https://bitbucket.org/account/user/peterhudec/api
+    * Docs: https://confluence.atlassian.com/display/BITBUCKET/oauth+Endpoint
+    * API reference: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
+
+    """
 
     access_token_url = 'https://bitbucket.org/!api/1.0/oauth/access_token'
     authorize_url = 'https://bitbucket.org/!api/1.0/oauth/authenticate'
@@ -281,7 +294,13 @@ class BitbucketClient(OAuth1Client):
 
 class Flickr(OAuth1Client):
 
-    """ Support Flickr. """
+    """ Support Flickr.
+
+    * Dashboard: https://www.flickr.com/services/apps/
+    * Docs: https://www.flickr.com/services/api/auth.oauth.html
+    * API reference: https://www.flickr.com/services/api/
+
+    """
 
     access_token_url = 'http://www.flickr.com/services/oauth/request_token'
     authorize_url = 'http://www.flickr.com/services/oauth/authorize'
@@ -292,7 +311,13 @@ class Flickr(OAuth1Client):
 
 class Meetup(OAuth1Client):
 
-    """ Support Meetup. """
+    """ Support Meetup.
+
+    * Dashboard: http://www.meetup.com/meetup_api/oauth_consumers/
+    * Docs: http://www.meetup.com/meetup_api/auth/#oauth
+    * API: http://www.meetup.com/meetup_api/docs/
+
+    """
 
     access_token_url = 'https://api.meetup.com/oauth/access/'
     authorize_url = 'http://www.meetup.com/authorize/'
@@ -303,7 +328,13 @@ class Meetup(OAuth1Client):
 
 class Plurk(OAuth1Client):
 
-    """ Support Plurk. """
+    """ Support Plurk.
+
+    * Dashboard: http://www.plurk.com/PlurkApp/
+    * API: http://www.plurk.com/API
+    * API explorer: http://www.plurk.com/OAuth/test/
+
+    """
 
     access_token_url = 'http://www.plurk.com/OAuth/access_token'
     authorize_url = 'http://www.plurk.com/OAuth/authorize'
@@ -314,7 +345,13 @@ class Plurk(OAuth1Client):
 
 class TwitterClient(OAuth1Client):
 
-    """ Support Twitter. """
+    """ Support Twitter.
+
+    * Dashboard: https://dev.twitter.com/apps
+    * Docs: https://dev.twitter.com/docs
+    * API reference: https://dev.twitter.com/docs/api
+
+    """
 
     access_token_url = 'https://api.twitter.com/oauth/access_token'
     authorize_url = 'https://api.twitter.com/oauth/authorize'
@@ -325,7 +362,13 @@ class TwitterClient(OAuth1Client):
 
 class TumblrClient(OAuth1Client):
 
-    """ Support Tumblr. """
+    """ Support Tumblr.
+
+    * Dashboard: http://www.tumblr.com/oauth/apps
+    * Docs: http://www.tumblr.com/docs/en/api/v2#auth
+    * API reference: http://www.tumblr.com/docs/en/api/v2
+
+    """
 
     access_token_url = 'http://www.tumblr.com/oauth/access_token'
     authorize_url = 'http://www.tumblr.com/oauth/authorize'
@@ -347,7 +390,13 @@ class VimeoClient(OAuth1Client):
 
 class YahooClient(OAuth1Client):
 
-    """ Support Yahoo. """
+    """ Support Yahoo.
+
+    * Dashboard: https://developer.vimeo.com/apps
+    * Docs: https://developer.vimeo.com/apis/advanced#oauth-endpoints
+    * API reference: https://developer.vimeo.com/apis
+
+    """
 
     access_token_url = 'https://api.login.yahoo.com/oauth/v2/get_token'
     authorize_url = 'https://api.login.yahoo.com/oauth/v2/request_auth'
@@ -358,7 +407,13 @@ class YahooClient(OAuth1Client):
 
 class AmazonClient(OAuth2Client):
 
-    """ Support Amazon. """
+    """ Support Amazon.
+
+    * Dashboard: https://developer.amazon.com/lwa/sp/overview.html
+    * Docs: https://developer.amazon.com/public/apis/engage/login-with-amazon/docs/conceptual_overview.html
+    * API reference: https://developer.amazon.com/public/apis
+
+    """
 
     access_token_url = 'https://api.amazon.com/auth/o2/token'
     authorize_url = 'https://www.amazon.com/ap/oa'
@@ -368,7 +423,13 @@ class AmazonClient(OAuth2Client):
 
 class EventbriteClient(OAuth2Client):
 
-    """ Support Eventbrite. """
+    """ Support Eventbrite.
+
+    * Dashboard: http://www.eventbrite.com/myaccount/apps/
+    * Docs: https://developer.eventbrite.com/docs/auth/
+    * API: http://developer.eventbrite.com/docs/
+
+    """
 
     access_token_url = 'https://www.eventbrite.com/oauth/token'
     authorize_url = 'https://www.eventbrite.com/oauth/authorize'
@@ -378,7 +439,14 @@ class EventbriteClient(OAuth2Client):
 
 class FacebookClient(OAuth2Client):
 
-    """ Support Facebook. """
+    """ Support Facebook.
+
+    * Dashboard: https://developers.facebook.com/apps
+    * Docs: http://developers.facebook.com/docs/howtos/login/server-side-login/
+    * API reference: http://developers.facebook.com/docs/reference/api/
+    * API explorer: http://developers.facebook.com/tools/explorer
+
+    """
 
     access_token_url = 'https://graph.facebook.com/oauth/access_token'
     authorize_url = 'https://www.facebook.com/dialog/oauth'
@@ -388,7 +456,13 @@ class FacebookClient(OAuth2Client):
 
 class FoursquareClient(OAuth2Client):
 
-    """ Support Foursquare. """
+    """ Support Foursquare.
+
+    * Dashboard: https://foursquare.com/developers/apps
+    * Docs: https://developer.foursquare.com/overview/auth.html
+    * API reference: https://developer.foursquare.com/docs/
+
+    """
 
     access_token_url = 'https://foursquare.com/oauth2/access_token'
     authorize_url = 'https://foursquare.com/oauth2/authenticate'
@@ -398,7 +472,13 @@ class FoursquareClient(OAuth2Client):
 
 class GithubClient(OAuth2Client):
 
-    """ Support Github. """
+    """ Support Github.
+
+    * Dashboard: https://github.com/settings/applications/
+    * Docs: http://developer.github.com/v3/#authentication
+    * API reference: http://developer.github.com/v3/
+
+    """
 
     access_token_url = 'https://github.com/login/oauth/access_token'
     authorize_url = 'https://github.com/login/oauth/authorize'
@@ -408,20 +488,34 @@ class GithubClient(OAuth2Client):
 
 class GoogleClient(OAuth2Client):
 
-    """ Support Google. """
+    """ Support Google.
+
+    * Dashboard: https://console.developers.google.com/project
+    * Docs: https://developers.google.com/accounts/docs/OAuth2
+    * API reference: https://developers.google.com/gdata/docs/directory
+    * API explorer: https://developers.google.com/oauthplayground/
+
+    """
 
     access_token_url = 'https://accounts.google.com/o/oauth2/token'
     authorize_url = 'https://accounts.google.com/o/oauth2/auth'
-    base_url = 'https://www.googleapis.com/plus/v1'
+    base_url = 'https://www.googleapis.com/plus/v1/'
     name = 'google'
 
 
 class YandexClient(OAuth2Client):
 
-    """ Support Yandex. """
+    """ Support Yandex.
+
+    * Dashboard: https://oauth.yandex.com/client/my
+    * Docs: http://api.yandex.com/oauth/doc/dg/reference/obtain-access-token.xml
+
+    """
 
     access_token_url = 'https://oauth.yandex.com/token'
     access_token_key = 'oauth_token'
     authorize_url = 'https://oauth.yandex.com/authorize'
     base_url = 'https://login.yandex.ru/info'
     name = 'yandex'
+
+# pylama:ignore=E501
