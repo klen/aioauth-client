@@ -55,7 +55,7 @@ def github(request):
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
     )
     if 'code' not in request.GET:
-        return web.HTTPFound(github.get_authorize_url())
+        return web.HTTPFound(github.get_authorize_url(scope='user:email'))
 
     # Get access token
     code = request.GET['code']
