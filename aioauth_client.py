@@ -134,8 +134,9 @@ class OAuth1Client(Client):
     version = '1.0'
 
     def __init__(self, consumer_key, consumer_secret, base_url=None, authorize_url=None,
-                 params=None, oauth_token=None, oauth_token_secret=None, request_token_url=None,
-                 access_token_url=None, access_token_key=None, logger=None, signature=None):
+                 oauth_token=None, oauth_token_secret=None, request_token_url=None,
+                 access_token_url=None, access_token_key=None, logger=None, signature=None,
+                 **params):
         """ Initialize the clients. """
         super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
 
@@ -213,15 +214,16 @@ class OAuth2Client(Client):
 
     name = 'oauth2'
 
-    def __init__(self, client_id, client_secret, base_url=None, authorize_url=None, params=None,
-                 access_token=None, access_token_url=None, access_token_key=None, logger=None):
+    def __init__(self, client_id, client_secret, base_url=None, authorize_url=None,
+                 access_token=None, access_token_url=None, access_token_key=None, logger=None,
+                 **params):
         """ Initialize the client. """
         super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
 
         self.access_token = access_token
         self.client_id = client_id
         self.client_secret = client_secret
-        self.params = params or {}
+        self.params = params
 
     def get_authorize_url(self, **params):
         """ Return a formatted authorize URL. """
