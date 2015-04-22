@@ -424,4 +424,4 @@ class YandexClient(OAuth2Client):
     access_token_key = 'oauth_token'
     authorize_url = 'https://oauth.yandex.com/authorize'
     base_url = 'https://login.yandex.ru/info'
-    name = 'google'
+    name = 'yandex'
