@@ -86,13 +86,14 @@ Usage
 .. code:: python
 
     # OAuth2
+    from aioauth_client import GithubClient
 
     github = GithubClient(
         client_id='b6281b6fe88fa4c313e6',
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
     )
 
-    authorize_url = github.get_authorize_url()
+    authorize_url = github.get_authorize_url(scope="user:email")
 
     # ...
     # Reload client to authorize_url and get code
@@ -110,7 +111,8 @@ Usage
         access_token=otoken,
     )
 
-    user_info = github.request('GET', 'user')
+    response = github.request('GET', 'user')
+    user_info = yield from response.json()
 
 
 Example
