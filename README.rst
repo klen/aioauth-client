@@ -50,8 +50,9 @@ Usage
 .. code:: python
 
     # OAuth1
+    from aioauth_client import TwitterClient
 
-    twitter = Twitter(
+    twitter = TwitterClient(
         consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
         consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
     )
@@ -59,18 +60,19 @@ Usage
     request_token, request_token_secret = yield from twitter.get_request_token()
 
     authorize_url = twitter.get_authorize_url(request_token)
-
+    print("Open",authorize_url,"in a browser")
     # ...
     # Reload client to authorize_url and get oauth_verifier
     # ...
-
+    print("PIN code:")
+    oauth_verifier = input()
     oauth_token, oauth_token_secret = yield from twitter.get_access_token(oauth_verifier)
 
     # Save the tokens for later use
 
     # ...
 
-    twitter = Twitter(
+    twitter = TwitterClient(
         consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
         consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
         oauth_token=oauth_token,
@@ -78,6 +80,8 @@ Usage
     )
 
     timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
+    content = yield from timeline.read()
+    print(content)
 
 .. code:: python
 
