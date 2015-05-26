@@ -97,11 +97,12 @@ class Client(object, metaclass=ClientRegistry):
 
     """ Abstract Client class. """
 
-    name = None
-    base_url = None
-    authorize_url = None
-    access_token_url = None
     access_token_key = 'access_token'
+    access_token_url = None
+    authorize_url = None
+    base_url = None
+    name = None
+    user_info_url = None
 
     def __init__(self, base_url=None, authorize_url=None, access_token_key=None,
                  access_token_url=None, logger=None):
@@ -122,6 +123,19 @@ class Client(object, metaclass=ClientRegistry):
         return "%s %s" % (self.name.title(), self.base_url)
 
     __repr__ = lambda s: "<%s>" % str(s)
+
+    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+        """ Make request to provider. """
+        raise NotImplemented
+
+    @asyncio.coroutine
+    def user_info(self):
+        """ Load a user_info from provider. """
+        if not self.user_info_url:
+            raise NotImplemented()
+
+        response = yield from self.request('GET', self.user_info_url)
+        return (yield from response.json())
 
 
 class OAuth1Client(Client):
@@ -290,6 +304,7 @@ class BitbucketClient(OAuth1Client):
     base_url = 'https://api.bitbucket.org/1.0/'
     name = 'bitbucket'
     request_token_url = 'https://bitbucket.org/!api/1.0/oauth/request_token'
+    user_info_url = 'https://api.bitbucket.org/1.0/user'
 
 
 class Flickr(OAuth1Client):
@@ -307,6 +322,7 @@ class Flickr(OAuth1Client):
     base_url = 'https://api.flickr.com/'
     name = 'flickr'
     request_token_url = 'http://www.flickr.com/services/oauth/request_token'
+    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1'
 
 
 class Meetup(OAuth1Client):
@@ -341,6 +357,7 @@ class Plurk(OAuth1Client):
     base_url = 'http://www.plurk.com/APP/'
     name = 'plurk'
     request_token_url = 'http://www.plurk.com/OAuth/request_token'
+    user_info_url = 'http://www.plurk.com/APP/Profile/getOwnProfile'
 
 
 class TwitterClient(OAuth1Client):
@@ -358,6 +375,7 @@ class TwitterClient(OAuth1Client):
     base_url = 'https://api.twitter.com/1.1/'
     name = 'twitter'
     request_token_url = 'https://api.twitter.com/oauth/request_token'
+    user_info_url = 'https://api.twitter.com/1.1/account/verify_credentials.json'
 
 
 class TumblrClient(OAuth1Client):
@@ -375,6 +393,7 @@ class TumblrClient(OAuth1Client):
     base_url = 'https://api.tumblr.com/v2/'
     name = 'tumblr'
     request_token_url = 'http://www.tumblr.com/oauth/request_token'
+    user_info_url = 'http://api.tumblr.com/v2/user/info'
 
 
 class VimeoClient(OAuth1Client):
@@ -386,6 +405,7 @@ class VimeoClient(OAuth1Client):
     base_url = 'https://vimeo.com/api/rest/v2/'
     name = 'vimeo'
     request_token_url = 'https://vimeo.com/oauth/request_token'
+    user_info_url = 'http://vimeo.com/api/rest/v2?format=json&method=vimeo.oauth.checkAccessToken'
 
 
 class YahooClient(OAuth1Client):
@@ -403,6 +423,8 @@ class YahooClient(OAuth1Client):
     base_url = 'https://query.yahooapis.com/v1/'
     name = 'yahoo'
     request_token_url = 'https://api.login.yahoo.com/oauth/v2/get_request_token'
+    user_info_url = ('https://query.yahooapis.com/v1/yql?q=select%20*%20from%20'
+                     'social.profile%20where%20guid%3Dme%3B&format=json')
 
 
 class AmazonClient(OAuth2Client):
@@ -419,6 +441,7 @@ class AmazonClient(OAuth2Client):
     authorize_url = 'https://www.amazon.com/ap/oa'
     base_url = 'https://api.amazon.com/'
     name = 'amazon'
+    user_info_url = 'https://api.amazon.com/user/profile'
 
 
 class EventbriteClient(OAuth2Client):
@@ -435,6 +458,7 @@ class EventbriteClient(OAuth2Client):
     authorize_url = 'https://www.eventbrite.com/oauth/authorize'
     base_url = 'https://www.eventbriteapi.com/v3/'
     name = 'eventbrite'
+    user_info_url = 'https://www.eventbriteapi.com/v3/users/me'
 
 
 class FacebookClient(OAuth2Client):
@@ -452,6 +476,7 @@ class FacebookClient(OAuth2Client):
     authorize_url = 'https://www.facebook.com/dialog/oauth'
     base_url = 'https://graph.facebook.com/v2.3'
     name = 'facebook'
+    user_info_url = 'https://graph.facebook.com/me'
 
 
 class FoursquareClient(OAuth2Client):
@@ -468,6 +493,7 @@ class FoursquareClient(OAuth2Client):
     authorize_url = 'https://foursquare.com/oauth2/authenticate'
     base_url = 'https://api.foursquare.com/v2/'
     name = 'foursquare'
+    user_info_url = 'https://api.foursquare.com/v2/users/self'
 
 
 class GithubClient(OAuth2Client):
@@ -484,6 +510,7 @@ class GithubClient(OAuth2Client):
     authorize_url = 'https://github.com/login/oauth/authorize'
     base_url = 'https://api.github.com'
     name = 'github'
+    user_info_url = 'https://api.github.com/user'
 
 
 class GoogleClient(OAuth2Client):
@@ -501,6 +528,7 @@ class GoogleClient(OAuth2Client):
     authorize_url = 'https://accounts.google.com/o/oauth2/auth'
     base_url = 'https://www.googleapis.com/plus/v1/'
     name = 'google'
+    user_info_url = 'https://www.googleapis.com/plus/v1/people/me'
 
 
 class YandexClient(OAuth2Client):
@@ -517,5 +545,6 @@ class YandexClient(OAuth2Client):
     authorize_url = 'https://oauth.yandex.com/authorize'
     base_url = 'https://login.yandex.ru/info'
     name = 'yandex'
+    user_info_url = 'https://login.yandex.ru/info'
 
 # pylama:ignore=E501
