@@ -531,6 +531,24 @@ class GoogleClient(OAuth2Client):
     user_info_url = 'https://www.googleapis.com/plus/v1/people/me'
 
 
+class VK(OAuth2Client):
+
+    """ Support vk.com.
+
+    * Dashboard: http://vk.com/editapp?id={consumer_key}
+    * Docs: http://vk.com/developers.php?oid=-17680044&p=Authorizing_Sites
+    * API reference: http://vk.com/developers.php?oid=-17680044&p=API_Method_Description
+
+    """
+
+    authorize_url = 'http://api.vkontakte.ru/oauth/authorize'
+    access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
+    user_info_url = 'https://api.vk.com/method/getProfiles?' + \
+                    'fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big'
+    name = 'vk'
+    base_url = 'https://api.vk.com'
+
+
 class YandexClient(OAuth2Client):
 
     """ Support Yandex.
