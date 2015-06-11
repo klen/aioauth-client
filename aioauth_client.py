@@ -777,12 +777,12 @@ class YandexClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """ Parse information from provider. """
-        username = data.get('login')
-        yield 'id', username
-        yield 'username', username
-        yield 'email', data.get('Default_email')
-        first_name, _, last_name = data.get('real_name').partition(' ')
-        yield 'first_name', first_name
-        yield 'last_name', last_name
+        yield 'id', data.get('id')
+        yield 'username', data.get('login')
+        yield 'email', data.get('default_email')
+        yield 'first_name', data.get('first_name')
+        yield 'last_name', data.get('last_name')
+        yield 'picture', 'https://avatars.yandex.net/get-yapic/%s/islands-200' % data.get(
+            'default_avatar_id', 0)
 
 # pylama:ignore=E501
