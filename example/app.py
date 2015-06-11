@@ -3,10 +3,42 @@
 import asyncio
 
 from aiohttp import web
-from aioauth_client import GithubClient, TwitterClient, GoogleClient
+import html
+from aioauth_client import GithubClient, TwitterClient, GoogleClient, YandexClient, OAuth1Client
 
 
 app = web.Application()
+clients = {
+    'twitter': {
+        'class': TwitterClient,
+        'init': {
+            'consumer_key': 'oUXo1M7q1rlsPXm4ER3dWnMt8',
+            'consumer_secret': 'YWzEvXZJO9PI6f9w2FtwUJenMvy9SPLrHOvnNkVkc5LdYjKKup',
+        },
+    },
+    'github': {
+        'class': GithubClient,
+        'init': {
+            'client_id': 'b6281b6fe88fa4c313e6',
+            'client_secret': '21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
+        },
+    },
+    'google': {
+        'class': GoogleClient,
+        'init': {
+            'client_id': '150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com', # noqa
+            'client_secret': 'df3JwpfRf8RIBz-9avNW8Gx7',
+        },
+        'params': {'scope': 'email profile'},
+    },
+    'yandex': {
+        'class': YandexClient,
+        'init': {
+            'client_id': 'e19388a76a824b3385f38beec67f98f1',
+            'client_secret': '1d2e6fdcc23b45849def6a34b43ac2d8',
+        },
+    },
+}
 
 
 @asyncio.coroutine
@@ -20,35 +52,7 @@ def index(request):
     """, content_type="text/html")
 
 
-@asyncio.coroutine
-def twitter(request):
-    twitter = TwitterClient(
-        consumer_key='oUXo1M7q1rlsPXm4ER3dWnMt8',
-        consumer_secret='YWzEvXZJO9PI6f9w2FtwUJenMvy9SPLrHOvnNkVkc5LdYjKKup',
-    )
-    if 'oauth_verifier' not in request.GET:
-        token, secret = yield from twitter.get_request_token()
-
-        # Dirty save a token_secret
-        # Dont do it in production
-        request.app.secret = secret
-        request.app.token = token
-
-        return web.HTTPFound(twitter.get_authorize_url())
-
-    oauth_verifier = request.GET['oauth_verifier']
-    twitter.oauth_token_secret = request.app.secret
-    twitter.oauth_token = request.app.token
-
-    # Get access token
-    token, secret = yield from twitter.get_access_token(oauth_verifier)
-
-    # Get a resource
-    response = yield from twitter.request('GET', 'account/verify_credentials.json')
-    body = yield from response.read()
-    return web.Response(body=body, content_type='application/json')
-
-
+# Simple Github (OAuth2) example (not connected to app)
 @asyncio.coroutine
 def github(request):
     github = GithubClient(
@@ -61,39 +65,66 @@ def github(request):
     # Get access token
     code = request.GET['code']
     token = yield from github.get_access_token(code)
+    assert token
 
-    # Get a resource
+    # Get a resource `https://api.github.com/user`
     response = yield from github.request('GET', 'user')
     body = yield from response.read()
     return web.Response(body=body, content_type='application/json')
 
 
 @asyncio.coroutine
-def google(request):
-    google = GoogleClient(
-        client_id='150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com',
-        client_secret='df3JwpfRf8RIBz-9avNW8Gx7',
+def oauth(request):
+    provider = request.match_info.get('provider')
+    if provider not in clients:
+        raise web.HTTPNotFound(reason='Unknown provider')
 
-        redirect_uri='http://%s%s' % (request.host, request.path),
-        scope='email profile',
-    )
-    if 'code' not in request.GET:
-        return web.HTTPFound(google.get_authorize_url())
+    # Create OAuth1/2 client
+    Client = clients[provider]['class']
+    client = Client(
+        redirect_uri='http://%s%s' % (request.host, request.path), **clients[provider]['init'])
 
-    # Get access token
-    code = request.GET['code']
-    token = yield from google.get_access_token(code)
+    # Check if is not redirect from provider
+    if client.shared_key not in request.GET:
 
-    # Get a resource
-    response = yield from google.request('GET', 'people/me')
-    body = yield from response.read()
-    return web.Response(body=body, content_type='application/json')
+        # For oauth1 we need more work
+        if isinstance(client, OAuth1Client):
+            token, secret = yield from client.get_request_token()
+
+            # Dirty save a token_secret
+            # Dont do it in production
+            request.app.secret = secret
+            request.app.token = token
+
+        # Redirect client to provider
+        params = clients[provider].get('params', {})
+        return web.HTTPFound(client.get_authorize_url(**params))
+
+    # For oauth1 we need more work
+    if isinstance(client, OAuth1Client):
+        client.oauth_token_secret = request.app.secret
+        client.oauth_token = request.app.token
+
+    yield from client.get_access_token(request.GET)
+    user, info = yield from client.user_info()
+    text = (
+        "<a href='/'>back</a><br/><br/>"
+        "<ul>"
+        "<li>ID: %(id)s</li>"
+        "<li>Username: %(username)s</li>"
+        "<li>First, last name: %(first_name)s, %(last_name)s</li>"
+        "<li>Email: %(email)s</li>"
+        "<li>Link: %(link)s</li>"
+        "<li>Picture: %(picture)s</li>"
+        "<li>Country, city: %(country)s, %(city)s</li>"
+        "</ul>"
+    ) % user.__dict__
+    text += "<code>%s</code>" % html.escape(repr(info))
+    return web.Response(text=text, content_type='text/html')
 
 
 app.router.add_route('GET', '/', index)
-app.router.add_route('GET', '/oauth/twitter', twitter)
-app.router.add_route('GET', '/oauth/github', github)
-app.router.add_route('GET', '/oauth/google', google)
+app.router.add_route('GET', '/oauth/{provider}', oauth)
 
 loop = asyncio.get_event_loop()
 f = loop.create_server(app.make_handler(), '127.0.0.1', 5000)

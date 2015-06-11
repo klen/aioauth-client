@@ -18,6 +18,19 @@ __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
 
 
+class User:
+
+    """ Store information about user. """
+
+    attrs = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
+        'link', 'locale', 'city', 'country'
+
+    def __init__(self, **kwargs):
+        """ Initialize self data. """
+        for attr in self.attrs:
+            setattr(self, attr, kwargs.get(attr))
+
+
 random = SystemRandom().random
 
 
@@ -98,6 +111,7 @@ class Client(object, metaclass=ClientRegistry):
     """ Abstract Client class. """
 
     access_token_key = 'access_token'
+    shared_key = 'oauth_verifier'
     access_token_url = None
     authorize_url = None
     base_url = None
@@ -135,7 +149,14 @@ class Client(object, metaclass=ClientRegistry):
             raise NotImplemented()
 
         response = yield from self.request('GET', self.user_info_url)
-        return (yield from response.json())
+        data = (yield from response.json())
+        user = User(**dict(self.user_parse(data)))
+        return user, data
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', None
 
 
 class OAuth1Client(Client):
@@ -206,6 +227,10 @@ class OAuth1Client(Client):
     @asyncio.coroutine
     def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
         """ Get an access_token from OAuth provider. """
+        # Possibility to provide REQUEST DATA to the method
+        if not isinstance(oauth_verifier, str) and self.shared_key in oauth_verifier:
+            oauth_verifier = oauth_verifier[self.shared_key]
+
         if request_token and self.oauth_token != request_token:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 access token. Request token is invalid')
@@ -227,6 +252,7 @@ class OAuth2Client(Client):
     """ Implement OAuth2. """
 
     name = 'oauth2'
+    shared_key = 'code'
 
     def __init__(self, client_id, client_secret, base_url=None, authorize_url=None,
                  access_token=None, access_token_url=None, access_token_key=None, logger=None,
@@ -262,6 +288,9 @@ class OAuth2Client(Client):
     @asyncio.coroutine
     def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
         """ Get access token from OAuth provider. """
+        # Possibility to provide REQUEST DATA to the method
+        if not isinstance(code, str) and self.shared_key in code:
+            code = code[self.shared_key]
         payload.setdefault('grant_type', 'authorization_code')
         payload.update({
             'client_id': self.client_id,
@@ -306,6 +335,17 @@ class BitbucketClient(OAuth1Client):
     request_token_url = 'https://bitbucket.org/!api/1.0/oauth/request_token'
     user_info_url = 'https://api.bitbucket.org/1.0/user'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        user_ = data.get('user')
+        yield 'id', user_.get('username')
+        yield 'username', user_.get('username')
+        yield 'first_name', user_.get('first_name')
+        yield 'last_name', user_.get('last_name')
+        yield 'picture', user_.get('avatar')
+        yield 'link', user_.get('resource_url')
+
 
 class Flickr(OAuth1Client):
 
@@ -324,6 +364,16 @@ class Flickr(OAuth1Client):
     request_token_url = 'http://www.flickr.com/services/oauth/request_token'
     user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        user_ = data.get('user', {})
+        yield 'id', data.get('user_nsid') or user_.get('id')
+        yield 'username', user_.get('username', {}).get('_content')
+        first_name, _, last_name = data.get('fullname', {}).get('_content', '').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+
 
 class Meetup(OAuth1Client):
 
@@ -340,6 +390,13 @@ class Meetup(OAuth1Client):
     base_url = 'https://api.meetup.com/2/'
     name = 'meetup'
     request_token_url = 'https://api.meetup.com/oauth/request/'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', data.get('id') or data.get('member_id')
+        yield 'locale', data.get('lang')
+        yield 'picture', data.get('photo', {}).get('photo_link')
 
 
 class Plurk(OAuth1Client):
@@ -359,6 +416,22 @@ class Plurk(OAuth1Client):
     request_token_url = 'http://www.plurk.com/OAuth/request_token'
     user_info_url = 'http://www.plurk.com/APP/Profile/getOwnProfile'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        _user = data.get('user_info', {})
+        _id = _user.get('id') or _user.get('uid')
+        yield 'id', _id
+        yield 'locale', _user.get('default_lang')
+        yield 'username', _user.get('display_name')
+        first_name, _,  last_name = _user.get('full_name', '').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+        yield 'picture', 'http://avatars.plurk.com/{0}-big2.jpg'.format(_id)
+        city, country = map(lambda s: s.strip(), _user.get('location', ',').split(','))
+        yield 'city', city
+        yield 'country', country
+
 
 class TwitterClient(OAuth1Client):
 
@@ -376,6 +449,21 @@ class TwitterClient(OAuth1Client):
     name = 'twitter'
     request_token_url = 'https://api.twitter.com/oauth/request_token'
     user_info_url = 'https://api.twitter.com/1.1/account/verify_credentials.json'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', data.get('id') or data.get('user_id')
+        first_name, _, last_name = data['name'].partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+        yield 'picture', data.get('profile_image_url')
+        yield 'locale', data.get('lang')
+        yield 'link', data.get('url')
+        yield 'username', data.get('screen_name')
+        city, _, country = map(lambda s: s.strip(), data.get('location', '').partition(','))
+        yield 'city', city
+        yield 'country', country
 
 
 class TumblrClient(OAuth1Client):
@@ -395,6 +483,14 @@ class TumblrClient(OAuth1Client):
     request_token_url = 'http://www.tumblr.com/oauth/request_token'
     user_info_url = 'http://api.tumblr.com/v2/user/info'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        _user = data.get('response', {}).get('user', {})
+        yield 'id', _user.get('name')
+        yield 'username', _user.get('name')
+        yield 'link', _user.get('blogs', [{}])[0].get('url')
+
 
 class VimeoClient(OAuth1Client):
 
@@ -406,6 +502,16 @@ class VimeoClient(OAuth1Client):
     name = 'vimeo'
     request_token_url = 'https://vimeo.com/oauth/request_token'
     user_info_url = 'http://vimeo.com/api/rest/v2?format=json&method=vimeo.oauth.checkAccessToken'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        _user = data.get('oauth', {}).get('user', {})
+        yield 'id', _user.get('id')
+        yield 'username', _user.get('username')
+        first_name, _, last_name = _user.get('display_name').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
 
 
 class YahooClient(OAuth1Client):
@@ -426,6 +532,25 @@ class YahooClient(OAuth1Client):
     user_info_url = ('https://query.yahooapis.com/v1/yql?q=select%20*%20from%20'
                      'social.profile%20where%20guid%3Dme%3B&format=json')
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        _user = data.get('query', {}).get('results', {}).get('profile', {})
+        yield 'id', _user.get('guid')
+        yield 'username', _user.get('username')
+        yield 'link', _user.get('profileUrl')
+        emails = _user.get('emails')
+        if isinstance(emails, list):
+            for email in emails:
+                if 'primary' in list(email.keys()):
+                    yield 'email', email.get('handle')
+        elif isinstance(emails, dict):
+            yield 'email', emails.get('handle')
+        yield 'picture', _user.get('image', {}).get('imageUrl')
+        city, country = map(lambda s: s.strip(), _user.get('location', ',').split(','))
+        yield 'city', city
+        yield 'country', country
+
 
 class AmazonClient(OAuth2Client):
 
@@ -443,6 +568,11 @@ class AmazonClient(OAuth2Client):
     name = 'amazon'
     user_info_url = 'https://api.amazon.com/user/profile'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', data.get('user_id')
+
 
 class EventbriteClient(OAuth2Client):
 
@@ -459,6 +589,15 @@ class EventbriteClient(OAuth2Client):
     base_url = 'https://www.eventbriteapi.com/v3/'
     name = 'eventbrite'
     user_info_url = 'https://www.eventbriteapi.com/v3/users/me'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        for email in data.get('emails', []):
+            if email.get('primary'):
+                yield 'id', email.get('email')
+                yield 'email', email.get('email')
+                break
 
 
 class FacebookClient(OAuth2Client):
@@ -478,6 +617,20 @@ class FacebookClient(OAuth2Client):
     name = 'facebook'
     user_info_url = 'https://graph.facebook.com/me'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        username = data.get('username')
+        yield 'id', username
+        yield 'username', username
+        yield 'picture', 'http://graph.facebook.com/{0}/picture?type=large'.format(username)
+        location = data.get('location', {}).get('name')
+        if location and location.split:
+            split_location = location.split(', ')
+            yield 'city', split_location[0].strip()
+            if len(split_location) > 1:
+                yield 'country', split_location[1].strip()
+
 
 class FoursquareClient(OAuth2Client):
 
@@ -495,6 +648,18 @@ class FoursquareClient(OAuth2Client):
     name = 'foursquare'
     user_info_url = 'https://api.foursquare.com/v2/users/self'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        user = data.get('response', {}).get('user', {})
+        yield 'id', user.get('id')
+        yield 'email', user.get('contact', {}).get('email')
+        yield 'first_name', user.get('firstName')
+        yield 'last_name', user.get('lastName')
+        city, country = user.get('homeCity', ', ').split(', ')
+        yield 'city', city
+        yield 'country', country
+
 
 class GithubClient(OAuth2Client):
 
@@ -511,6 +676,24 @@ class GithubClient(OAuth2Client):
     base_url = 'https://api.github.com'
     name = 'github'
     user_info_url = 'https://api.github.com/user'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', data.get('id')
+        yield 'email', data.get('email')
+        first_name, _, last_name = data.get('name', '').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+        yield 'username', data.get('login')
+        yield 'picture', data.get('avatar_url')
+        yield 'link', data.get('html_url')
+        location = data.get('location', '')
+        if location:
+            split_location = location.split(',')
+            yield 'country', split_location[0].strip()
+            if len(split_location) > 1:
+                yield 'city', split_location[1].strip()
 
 
 class GoogleClient(OAuth2Client):
@@ -530,6 +713,20 @@ class GoogleClient(OAuth2Client):
     name = 'google'
     user_info_url = 'https://www.googleapis.com/plus/v1/people/me'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        yield 'id', data.get('sub') or data.get('id')
+        yield 'username', data.get('nickname')
+        yield 'first_name', data.get('name', {}).get('givenName')
+        yield 'last_name', data.get('name', {}).get('familyName')
+        yield 'locale', data.get('language')
+        yield 'link', data.get('url')
+        yield 'picture', data.get('image', {}).get('url')
+        for email in data.get('emails', []):
+            if email['type'] == 'account':
+                yield 'email', email['value']
+
 
 class VK(OAuth2Client):
 
@@ -548,6 +745,18 @@ class VK(OAuth2Client):
     name = 'vk'
     base_url = 'https://api.vk.com'
 
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        resp = data.get('response', [{}])[0]
+        yield 'id', resp.get('uid')
+        yield 'first_name', resp.get('first_name')
+        yield 'last_name', resp.get('last_name')
+        yield 'username', resp.get('nickname')
+        yield 'city', resp.get('city')
+        yield 'country', resp.get('country')
+        yield 'picture', resp.get('photo_big')
+
 
 class YandexClient(OAuth2Client):
 
@@ -564,5 +773,16 @@ class YandexClient(OAuth2Client):
     base_url = 'https://login.yandex.ru/info'
     name = 'yandex'
     user_info_url = 'https://login.yandex.ru/info'
+
+    @staticmethod
+    def user_parse(data):
+        """ Parse information from provider. """
+        username = data.get('login')
+        yield 'id', username
+        yield 'username', username
+        yield 'email', data.get('Default_email')
+        first_name, _, last_name = data.get('real_name').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
 
 # pylama:ignore=E501
