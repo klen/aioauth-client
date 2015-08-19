@@ -42,3 +42,5 @@ output/*/index.html
 docs/_build
 
 /todo.txt
+/.ropeproject
+/.env

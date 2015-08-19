@@ -271,7 +271,7 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
         """ Request OAuth2 resource. """
         url = self._get_url(url)
         params = params or {}
@@ -283,7 +283,8 @@ class OAuth2Client(Client):
             'Accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
-        return aiorequest(method, url, params=params, headers=headers, **aio_kwargs)
+        return asyncio.wait_for(
+            aiorequest(method, url, params=params, headers=headers, **aio_kwargs), timeout)
 
     @asyncio.coroutine
     def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
@@ -728,7 +729,7 @@ class GoogleClient(OAuth2Client):
                 yield 'email', email['value']
 
 
-class VK(OAuth2Client):
+class VKClient(OAuth2Client):
 
     """ Support vk.com.
 
@@ -744,6 +745,11 @@ class VK(OAuth2Client):
                     'fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big'
     name = 'vk'
     base_url = 'https://api.vk.com'
+
+    def __init__(self, *args, **kwargs):
+        """Set default scope."""
+        super(VKClient, self).__init__(*args, **kwargs)
+        self.params.setdefault('scope', 'offline')
 
     @staticmethod
     def user_parse(data):

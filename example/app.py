@@ -4,7 +4,8 @@ import asyncio
 
 from aiohttp import web
 import html
-from aioauth_client import GithubClient, TwitterClient, GoogleClient, YandexClient, OAuth1Client
+from aioauth_client import (
+    GithubClient, TwitterClient, GoogleClient, YandexClient, OAuth1Client, VKClient)
 
 
 app = web.Application()
@@ -28,8 +29,8 @@ clients = {
         'init': {
             'client_id': '150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com', # noqa
             'client_secret': 'df3JwpfRf8RIBz-9avNW8Gx7',
+            'params': {'scope': 'email profile'},
         },
-        'params': {'scope': 'email profile'},
     },
     'yandex': {
         'class': YandexClient,
@@ -38,6 +39,14 @@ clients = {
             'client_secret': '1d2e6fdcc23b45849def6a34b43ac2d8',
         },
     },
+    'vk': {
+        'class': VKClient,
+        'init': {
+            'client_id': '5038699',
+            'client_secret': 'WgKadvY82wlnleOAyw6T',
+            'params': {'scope': 'offline,email'}
+        },
+    }
 }
 
 
@@ -48,6 +57,7 @@ def index(request):
             <li><a href="/oauth/google">Login with Google</a></li>
             <li><a href="/oauth/github">Login with Github</a></li>
             <li><a href="/oauth/twitter">Login with Twitter</a></li>
+            <li><a href="/oauth/vk">Login with VK</a></li>
         </ul>
     """, content_type="text/html")
 
