@@ -143,12 +143,12 @@ class Client(object, metaclass=ClientRegistry):
         raise NotImplemented
 
     @asyncio.coroutine
-    def user_info(self):
+    def user_info(self, **kwargs):
         """ Load a user_info from provider. """
         if not self.user_info_url:
             raise NotImplemented()
 
-        response = yield from self.request('GET', self.user_info_url)
+        response = yield from self.request('GET', self.user_info_url, **kwargs)
         data = (yield from response.json())
         user = User(**dict(self.user_parse(data)))
         return user, data
@@ -614,9 +614,15 @@ class FacebookClient(OAuth2Client):
 
     access_token_url = 'https://graph.facebook.com/oauth/access_token'
     authorize_url = 'https://www.facebook.com/dialog/oauth'
-    base_url = 'https://graph.facebook.com/v2.3'
+    base_url = 'https://graph.facebook.com/v2.4'
     name = 'facebook'
     user_info_url = 'https://graph.facebook.com/me'
+
+    @asyncio.coroutine
+    def user_info(self, params=None, **kwargs):
+        params = params or {}
+        params['fields'] = 'id,email,first_name,last_name,name,link,locale,gender,location'
+        return (yield from super(FacebookClient, self).user_info(params=params, **kwargs))
 
     @staticmethod
     def user_parse(data):
