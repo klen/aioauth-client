@@ -23,7 +23,7 @@ class User:
     """ Store information about user. """
 
     attrs = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
-        'link', 'locale', 'city', 'country'
+        'link', 'locale', 'city', 'country', 'gender'
 
     def __init__(self, **kwargs):
         """ Initialize self data. """
@@ -621,12 +621,19 @@ class FacebookClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """ Parse information from provider. """
-        username = data.get('username')
-        yield 'id', username
-        yield 'username', username
-        yield 'picture', 'http://graph.facebook.com/{0}/picture?type=large'.format(username)
+        id_ = data.get('id')
+        yield 'id', id_
+        yield 'email', data.get('email')
+        yield 'first_name', data.get('first_name')
+        yield 'last_name', data.get('last_name')
+        yield 'username', data.get('name')
+        yield 'picture', 'http://graph.facebook.com/{0}/picture?type=large'.format(id_)
+        yield 'link', data.get('link')
+        yield 'locale', data.get('locale')
+        yield 'gender', data.get('gender')
+
         location = data.get('location', {}).get('name')
-        if location and location.split:
+        if location:
             split_location = location.split(', ')
             yield 'city', split_location[0].strip()
             if len(split_location) > 1:

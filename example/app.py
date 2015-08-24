@@ -5,7 +5,14 @@ import asyncio
 from aiohttp import web
 import html
 from aioauth_client import (
-    GithubClient, TwitterClient, GoogleClient, YandexClient, OAuth1Client, VKClient)
+    FacebookClient,
+    GithubClient,
+    GoogleClient,
+    OAuth1Client,
+    TwitterClient,
+    VKClient,
+    YandexClient,
+)
 
 
 app = web.Application()
@@ -46,7 +53,15 @@ clients = {
             'client_secret': 'WgKadvY82wlnleOAyw6T',
             'params': {'scope': 'offline,email'}
         },
-    }
+    },
+    'facebook': {
+        'class': FacebookClient,
+        'init': {
+            'client_id': '384739235070641',
+            'client_secret': '8e3374a4e1e91a2bd5b830a46208c15a',
+            'params': {'scope': 'email'}
+        },
+    },
 }
 
 
@@ -54,8 +69,9 @@ clients = {
 def index(request):
     return web.Response(text="""
         <ul>
-            <li><a href="/oauth/google">Login with Google</a></li>
+            <li><a href="/oauth/facebook">Login with Facebook</a></li>
             <li><a href="/oauth/github">Login with Github</a></li>
+            <li><a href="/oauth/google">Login with Google</a></li>
             <li><a href="/oauth/twitter">Login with Twitter</a></li>
             <li><a href="/oauth/vk">Login with VK</a></li>
         </ul>
@@ -123,6 +139,7 @@ def oauth(request):
         "<li>ID: %(id)s</li>"
         "<li>Username: %(username)s</li>"
         "<li>First, last name: %(first_name)s, %(last_name)s</li>"
+        "<li>Gender: %(gender)s</li>"
         "<li>Email: %(email)s</li>"
         "<li>Link: %(link)s</li>"
         "<li>Picture: %(picture)s</li>"
