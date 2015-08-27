@@ -5,6 +5,7 @@ import base64
 import hmac
 import logging
 import time
+from collections import namedtuple
 from hashlib import sha1
 from random import SystemRandom
 from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsplit
@@ -18,17 +19,10 @@ __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
 
 
-class User:
-
-    """ Store information about user. """
-
-    attrs = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
-        'link', 'locale', 'city', 'country', 'gender'
-
-    def __init__(self, **kwargs):
-        """ Initialize self data. """
-        for attr in self.attrs:
-            setattr(self, attr, kwargs.get(attr))
+User = namedtuple('User', [
+    'id', 'email', 'first_name', 'last_name', 'username', 'picture',
+    'link', 'locale', 'city', 'country', 'gender'
+])
 
 
 random = SystemRandom().random
