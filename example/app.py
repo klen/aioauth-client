@@ -90,7 +90,7 @@ def github(request):
 
     # Get access token
     code = request.GET['code']
-    token = yield from github.get_access_token(code)
+    token, data = yield from github.get_access_token(code)
     assert token
 
     # Get a resource `https://api.github.com/user`

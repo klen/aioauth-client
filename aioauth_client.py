@@ -226,7 +226,10 @@ class OAuth1Client(Client):
 
     @asyncio.coroutine
     def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
-        """ Get an access_token from OAuth provider. """
+        """Get an access_token from OAuth provider.
+
+        :returns: (access_token, access_token_secret, provider_data)
+        """
         # Possibility to provide REQUEST DATA to the method
         if not isinstance(oauth_verifier, str) and self.shared_key in oauth_verifier:
             oauth_verifier = oauth_verifier[self.shared_key]
@@ -288,7 +291,10 @@ class OAuth2Client(Client):
 
     @asyncio.coroutine
     def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
-        """ Get access token from OAuth provider. """
+        """Get an access_token from OAuth provider.
+
+        :returns: (access_token, provider_data)
+        """
         # Possibility to provide REQUEST DATA to the method
         if not isinstance(code, str) and self.shared_key in code:
             code = code[self.shared_key]
@@ -316,7 +322,7 @@ class OAuth2Client(Client):
         except Exception:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth access token.')
-        return self.access_token
+        return self.access_token, data
 
 
 class BitbucketClient(OAuth1Client):
