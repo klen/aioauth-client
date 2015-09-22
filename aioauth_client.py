@@ -626,6 +626,7 @@ class FacebookClient(OAuth2Client):
 
     @asyncio.coroutine
     def user_info(self, params=None, **kwargs):
+        """Facebook required fields-param."""
         params = params or {}
         params['fields'] = 'id,email,first_name,last_name,name,link,locale,gender,location'
         return (yield from super(FacebookClient, self).user_info(params=params, **kwargs))
@@ -702,7 +703,7 @@ class GithubClient(OAuth2Client):
         """ Parse information from provider. """
         yield 'id', data.get('id')
         yield 'email', data.get('email')
-        first_name, _, last_name = data.get('name', '').partition(' ')
+        first_name, _, last_name = (data.get('name') or '').partition(' ')
         yield 'first_name', first_name
         yield 'last_name', last_name
         yield 'username', data.get('login')
