@@ -28,9 +28,8 @@ def test_oauth1(loop):
     assert url == 'https://api.twitter.com/oauth/authorize?oauth_token=%s' % rtoken
 
     coro = twitter.get_access_token('wrong', rtoken)
-    atoken, asecret = loop.run_until_complete(coro)
-    assert not atoken
-    assert not asecret
+    with pytest.raises(web.HTTPBadRequest):
+        loop.run_until_complete(coro)
 
 
 def test_oauth2(loop):
