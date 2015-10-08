@@ -145,7 +145,7 @@ Contributors
 .. _license:
 
 License
-=======
+========
 
 Licensed under a `MIT license`_.
 

@@ -1,4 +1,4 @@
-""" Support OAuth for Aiohttp. """
+"""OAuth support for Aiohttp lib."""
 
 import asyncio
 import base64
@@ -20,13 +20,13 @@ __license__ = "MIT"
 
 class User:
 
-    """ Store information about user. """
+    """Store information about user."""
 
     attrs = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
         'link', 'locale', 'city', 'country', 'gender'
 
     def __init__(self, **kwargs):
-        """ Initialize self data. """
+        """Initialize self data."""
         for attr in self.attrs:
             setattr(self, attr, kwargs.get(attr))
 
@@ -36,33 +36,36 @@ random = SystemRandom().random
 
 class Signature(object):
 
-    """ Abstract base class for signature methods. """
+    """Abstract base class for signature methods."""
 
     name = None
 
-    def _escape(self, s):
+    @staticmethod
+    def _escape(s):
+        """URL escape a string."""
         bs = s.encode('utf-8')
         return quote(bs, '~').encode('utf-8')
 
-    def _remove_qs(self, url):
-        """ Remove a query string from a URL. """
-        scheme, netloc, path, query, fragment = urlsplit(url)
+    @staticmethod
+    def _remove_qs(url):
+        """Remove query string from an URL."""
+        scheme, netloc, path, _, fragment = urlsplit(url)
 
         return urlunsplit((scheme, netloc, path, '', fragment))
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
-        """ Abstract method. """
-        raise NotImplementedError
+        """Abstract method."""
+        raise NotImplementedError('Shouldnt be called.')
 
 
 class HmacSha1Signature(Signature):
 
-    """ HMAC-SHA1 Signature Method. """
+    """HMAC-SHA1 signature-method."""
 
     name = 'HMAC-SHA1'
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
-        """ Create a signature using HMAC-SHA1. """
+        """Create a signature using HMAC-SHA1."""
         params = "&".join("%s=%s" % (k, quote(str(value), '~'))
                           for k, value in sorted(params.items()))
         method = method.upper()
@@ -80,12 +83,12 @@ class HmacSha1Signature(Signature):
 
 class PlaintextSignature(Signature):
 
-    """ PLAINTEXT Signature Method. """
+    """PLAINTEXT signature-method."""
 
     name = 'PLAINTEXT'
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
-        """ Create a signature using PLAINTEXT. """
+        """Create a signature using PLAINTEXT."""
         key = self._escape(consumer_secret) + b'&'
         if oauth_token_secret:
             key += self._escape(oauth_token_secret)
@@ -94,12 +97,12 @@ class PlaintextSignature(Signature):
 
 class ClientRegistry(type):
 
-    """ Register OAUTH clients. """
+    """Meta class to register OAUTH clients."""
 
     clients = {}
 
     def __new__(mcs, name, bases, params):
-        """ Save a created client in self. """
+        """Save created client in self registry."""
         cls = super().__new__(mcs, name, bases, params)
         if cls.name:
             mcs.clients[cls.name] = cls
@@ -108,7 +111,7 @@ class ClientRegistry(type):
 
 class Client(object, metaclass=ClientRegistry):
 
-    """ Abstract Client class. """
+    """Base abstract OAuth Client class."""
 
     access_token_key = 'access_token'
     shared_key = 'oauth_verifier'
@@ -120,7 +123,7 @@ class Client(object, metaclass=ClientRegistry):
 
     def __init__(self, base_url=None, authorize_url=None, access_token_key=None,
                  access_token_url=None, logger=None):
-        """ Initialize the Client. """
+        """Initialize the client."""
         self.base_url = base_url or self.base_url
         self.authorize_url = authorize_url or self.authorize_url
         self.access_token_key = access_token_key or self.access_token_key
@@ -128,25 +131,26 @@ class Client(object, metaclass=ClientRegistry):
         self.logger = logger or logging.getLogger('OAuth: %s' % self.name)
 
     def _get_url(self, url):
+        """Build provider's url. Join with base_url part if needed."""
         if self.base_url and not url.startswith(('http://', 'https://')):
             return urljoin(self.base_url, url)
         return url
 
     def __str__(self):
-        """ String representation. """
+        """String representation."""
         return "%s %s" % (self.name.title(), self.base_url)
 
     __repr__ = lambda s: "<%s>" % str(s)
 
     def request(self, method, url, params=None, headers=None, **aio_kwargs):
-        """ Make request to provider. """
-        raise NotImplemented
+        """Make a request to provider."""
+        raise NotImplementedError('Shouldnt be called.')
 
     @asyncio.coroutine
     def user_info(self, **kwargs):
-        """ Load a user_info from provider. """
+        """Load user information from provider."""
         if not self.user_info_url:
-            raise NotImplemented()
+            raise NotImplementedError('The provider doesnt support user_info method.')
 
         response = yield from self.request('GET', self.user_info_url, **kwargs)
         data = (yield from response.json())
@@ -155,13 +159,13 @@ class Client(object, metaclass=ClientRegistry):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse user's information from given provider data."""
         yield 'id', None
 
 
 class OAuth1Client(Client):
 
-    """ Implement OAuth. """
+    """Implement OAuth1."""
 
     name = 'oauth1'
     access_token_key = 'oauth_token'
@@ -172,7 +176,7 @@ class OAuth1Client(Client):
                  oauth_token=None, oauth_token_secret=None, request_token_url=None,
                  access_token_url=None, access_token_key=None, logger=None, signature=None,
                  **params):
-        """ Initialize the clients. """
+        """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
 
         self.oauth_token = oauth_token
@@ -184,12 +188,12 @@ class OAuth1Client(Client):
         self.signature = signature or HmacSha1Signature()
 
     def get_authorize_url(self, request_token=None, **params):
-        """ Return a formatted authorize URL. """
+        """Return formatted authorization URL."""
         params.update({'oauth_token': request_token or self.oauth_token})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
-        """ Request OAuth resouce. """
+    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+        """Make a request to provider."""
         oparams = {
             'oauth_consumer_key': self.consumer_key,
             'oauth_nonce': sha1(str(random()).encode('ascii')).hexdigest(),
@@ -207,26 +211,32 @@ class OAuth1Client(Client):
         oparams['oauth_signature'] = self.signature.sign(
             self.consumer_secret, method, url,
             oauth_token_secret=self.oauth_token_secret, **oparams)
-        self.logger.debug("%s %s" % (url, oparams))
-        return aiorequest(method, url, params=oparams, headers=headers, **aio_kwargs)
+        self.logger.debug("%s %s", url, oparams)
+        return asyncio.wait_for(
+            aiorequest(method, url, params=oparams, headers=headers, **aio_kwargs), timeout)
 
     @asyncio.coroutine
     def get_request_token(self, loop=None, **params):
-        """ Get a request_token and request_token_secret from OAuth provider. """
+        """Get a request_token and request_token_secret from OAuth1 provider."""
+        params = dict(self.params, **params)
         response = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
         if response.status / 100 > 2:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 request token. HTTP status code: %s'
                 % response.status)
+
         data = yield from response.text()
         data = dict(parse_qsl(data))
+
+        response.close()
+
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
         return self.oauth_token, self.oauth_token_secret
 
     @asyncio.coroutine
     def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
-        """Get an access_token from OAuth provider.
+        """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
         """
@@ -240,9 +250,15 @@ class OAuth1Client(Client):
 
         response = yield from self.request('POST', self.access_token_url, params={
             'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
+        if response.status / 100 > 2:
+            raise web.HTTPBadRequest(
+                reason='Failed to obtain OAuth 1.0 access token. HTTP status code: %s'
+                % response.status)
 
         data = yield from response.text()
         data = dict(parse_qsl(data))
+
+        response.close()
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -252,7 +268,7 @@ class OAuth1Client(Client):
 
 class OAuth2Client(Client):
 
-    """ Implement OAuth2. """
+    """Implement OAuth2."""
 
     name = 'oauth2'
     shared_key = 'code'
@@ -260,7 +276,7 @@ class OAuth2Client(Client):
     def __init__(self, client_id, client_secret, base_url=None, authorize_url=None,
                  access_token=None, access_token_url=None, access_token_key=None, logger=None,
                  **params):
-        """ Initialize the client. """
+        """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
 
         self.access_token = access_token
@@ -269,13 +285,13 @@ class OAuth2Client(Client):
         self.params = params
 
     def get_authorize_url(self, **params):
-        """ Return a formatted authorize URL. """
+        """Return formatted authorize URL."""
         params = dict(self.params, **params)
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
     def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
-        """ Request OAuth2 resource. """
+        """Request OAuth2 resource."""
         url = self._get_url(url)
         params = params or {}
 
@@ -320,19 +336,20 @@ class OAuth2Client(Client):
         try:
             self.access_token = data['access_token']
         except Exception:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth access token.')
+            raise web.HTTPBadRequest(reason='Failed to obtain OAuth access token.')
+        finally:
+            response.close()
+
         return self.access_token, data
 
 
 class BitbucketClient(OAuth1Client):
 
-    """ Support Bitbucket.
+    """Support Bitbucket.
 
     * Dashboard: https://bitbucket.org/account/user/peterhudec/api
     * Docs: https://confluence.atlassian.com/display/BITBUCKET/oauth+Endpoint
-    * API reference: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
-
+    * API refer: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
     """
 
     access_token_url = 'https://bitbucket.org/!api/1.0/oauth/access_token'
@@ -344,7 +361,7 @@ class BitbucketClient(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         user_ = data.get('user')
         yield 'id', user_.get('username')
         yield 'username', user_.get('username')
@@ -356,12 +373,11 @@ class BitbucketClient(OAuth1Client):
 
 class Flickr(OAuth1Client):
 
-    """ Support Flickr.
+    """Support Flickr.
 
     * Dashboard: https://www.flickr.com/services/apps/
     * Docs: https://www.flickr.com/services/api/auth.oauth.html
     * API reference: https://www.flickr.com/services/api/
-
     """
 
     access_token_url = 'http://www.flickr.com/services/oauth/request_token'
@@ -369,11 +385,11 @@ class Flickr(OAuth1Client):
     base_url = 'https://api.flickr.com/'
     name = 'flickr'
     request_token_url = 'http://www.flickr.com/services/oauth/request_token'
-    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1'
+    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1' # noqa
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         user_ = data.get('user', {})
         yield 'id', data.get('user_nsid') or user_.get('id')
         yield 'username', user_.get('username', {}).get('_content')
@@ -384,12 +400,11 @@ class Flickr(OAuth1Client):
 
 class Meetup(OAuth1Client):
 
-    """ Support Meetup.
+    """Support Meetup.
 
     * Dashboard: http://www.meetup.com/meetup_api/oauth_consumers/
     * Docs: http://www.meetup.com/meetup_api/auth/#oauth
     * API: http://www.meetup.com/meetup_api/docs/
-
     """
 
     access_token_url = 'https://api.meetup.com/oauth/access/'
@@ -400,7 +415,7 @@ class Meetup(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         yield 'id', data.get('id') or data.get('member_id')
         yield 'locale', data.get('lang')
         yield 'picture', data.get('photo', {}).get('photo_link')
@@ -408,12 +423,11 @@ class Meetup(OAuth1Client):
 
 class Plurk(OAuth1Client):
 
-    """ Support Plurk.
+    """Support Plurk.
 
     * Dashboard: http://www.plurk.com/PlurkApp/
     * API: http://www.plurk.com/API
     * API explorer: http://www.plurk.com/OAuth/test/
-
     """
 
     access_token_url = 'http://www.plurk.com/OAuth/access_token'
@@ -425,13 +439,13 @@ class Plurk(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         _user = data.get('user_info', {})
         _id = _user.get('id') or _user.get('uid')
         yield 'id', _id
         yield 'locale', _user.get('default_lang')
         yield 'username', _user.get('display_name')
-        first_name, _,  last_name = _user.get('full_name', '').partition(' ')
+        first_name, _, last_name = _user.get('full_name', '').partition(' ')
         yield 'first_name', first_name
         yield 'last_name', last_name
         yield 'picture', 'http://avatars.plurk.com/{0}-big2.jpg'.format(_id)
@@ -442,12 +456,11 @@ class Plurk(OAuth1Client):
 
 class TwitterClient(OAuth1Client):
 
-    """ Support Twitter.
+    """Support Twitter.
 
     * Dashboard: https://dev.twitter.com/apps
     * Docs: https://dev.twitter.com/docs
     * API reference: https://dev.twitter.com/docs/api
-
     """
 
     access_token_url = 'https://api.twitter.com/oauth/access_token'
@@ -459,7 +472,7 @@ class TwitterClient(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         yield 'id', data.get('id') or data.get('user_id')
         first_name, _, last_name = data['name'].partition(' ')
         yield 'first_name', first_name
@@ -475,12 +488,11 @@ class TwitterClient(OAuth1Client):
 
 class TumblrClient(OAuth1Client):
 
-    """ Support Tumblr.
+    """Support Tumblr.
 
     * Dashboard: http://www.tumblr.com/oauth/apps
     * Docs: http://www.tumblr.com/docs/en/api/v2#auth
     * API reference: http://www.tumblr.com/docs/en/api/v2
-
     """
 
     access_token_url = 'http://www.tumblr.com/oauth/access_token'
@@ -492,7 +504,7 @@ class TumblrClient(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         _user = data.get('response', {}).get('user', {})
         yield 'id', _user.get('name')
         yield 'username', _user.get('name')
@@ -501,7 +513,7 @@ class TumblrClient(OAuth1Client):
 
 class VimeoClient(OAuth1Client):
 
-    """ Support Vimeo. """
+    """Support Vimeo."""
 
     access_token_url = 'https://vimeo.com/oauth/access_token'
     authorize_url = 'https://vimeo.com/oauth/authorize'
@@ -512,7 +524,7 @@ class VimeoClient(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         _user = data.get('oauth', {}).get('user', {})
         yield 'id', _user.get('id')
         yield 'username', _user.get('username')
@@ -523,12 +535,11 @@ class VimeoClient(OAuth1Client):
 
 class YahooClient(OAuth1Client):
 
-    """ Support Yahoo.
+    """Support Yahoo.
 
     * Dashboard: https://developer.vimeo.com/apps
     * Docs: https://developer.vimeo.com/apis/advanced#oauth-endpoints
     * API reference: https://developer.vimeo.com/apis
-
     """
 
     access_token_url = 'https://api.login.yahoo.com/oauth/v2/get_token'
@@ -541,7 +552,7 @@ class YahooClient(OAuth1Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         _user = data.get('query', {}).get('results', {}).get('profile', {})
         yield 'id', _user.get('guid')
         yield 'username', _user.get('username')
@@ -561,12 +572,11 @@ class YahooClient(OAuth1Client):
 
 class AmazonClient(OAuth2Client):
 
-    """ Support Amazon.
+    """Support Amazon.
 
     * Dashboard: https://developer.amazon.com/lwa/sp/overview.html
-    * Docs: https://developer.amazon.com/public/apis/engage/login-with-amazon/docs/conceptual_overview.html
+    * Docs: https://developer.amazon.com/public/apis/engage/login-with-amazon/docs/conceptual_overview.html # noqa
     * API reference: https://developer.amazon.com/public/apis
-
     """
 
     access_token_url = 'https://api.amazon.com/auth/o2/token'
@@ -577,18 +587,17 @@ class AmazonClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         yield 'id', data.get('user_id')
 
 
 class EventbriteClient(OAuth2Client):
 
-    """ Support Eventbrite.
+    """Support Eventbrite.
 
     * Dashboard: http://www.eventbrite.com/myaccount/apps/
     * Docs: https://developer.eventbrite.com/docs/auth/
     * API: http://developer.eventbrite.com/docs/
-
     """
 
     access_token_url = 'https://www.eventbrite.com/oauth/token'
@@ -599,7 +608,7 @@ class EventbriteClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         for email in data.get('emails', []):
             if email.get('primary'):
                 yield 'id', email.get('email')
@@ -609,13 +618,12 @@ class EventbriteClient(OAuth2Client):
 
 class FacebookClient(OAuth2Client):
 
-    """ Support Facebook.
+    """Support Facebook.
 
     * Dashboard: https://developers.facebook.com/apps
     * Docs: http://developers.facebook.com/docs/howtos/login/server-side-login/
     * API reference: http://developers.facebook.com/docs/reference/api/
     * API explorer: http://developers.facebook.com/tools/explorer
-
     """
 
     access_token_url = 'https://graph.facebook.com/oauth/access_token'
@@ -633,7 +641,7 @@ class FacebookClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         id_ = data.get('id')
         yield 'id', id_
         yield 'email', data.get('email')
@@ -655,12 +663,11 @@ class FacebookClient(OAuth2Client):
 
 class FoursquareClient(OAuth2Client):
 
-    """ Support Foursquare.
+    """Support Foursquare.
 
     * Dashboard: https://foursquare.com/developers/apps
     * Docs: https://developer.foursquare.com/overview/auth.html
     * API reference: https://developer.foursquare.com/docs/
-
     """
 
     access_token_url = 'https://foursquare.com/oauth2/access_token'
@@ -671,7 +678,7 @@ class FoursquareClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from the provider."""
         user = data.get('response', {}).get('user', {})
         yield 'id', user.get('id')
         yield 'email', user.get('contact', {}).get('email')
@@ -684,12 +691,11 @@ class FoursquareClient(OAuth2Client):
 
 class GithubClient(OAuth2Client):
 
-    """ Support Github.
+    """Support Github.
 
     * Dashboard: https://github.com/settings/applications/
     * Docs: http://developer.github.com/v3/#authentication
     * API reference: http://developer.github.com/v3/
-
     """
 
     access_token_url = 'https://github.com/login/oauth/access_token'
@@ -700,7 +706,7 @@ class GithubClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         yield 'id', data.get('id')
         yield 'email', data.get('email')
         first_name, _, last_name = (data.get('name') or '').partition(' ')
@@ -719,13 +725,12 @@ class GithubClient(OAuth2Client):
 
 class GoogleClient(OAuth2Client):
 
-    """ Support Google.
+    """Support Google.
 
     * Dashboard: https://console.developers.google.com/project
     * Docs: https://developers.google.com/accounts/docs/OAuth2
     * API reference: https://developers.google.com/gdata/docs/directory
     * API explorer: https://developers.google.com/oauthplayground/
-
     """
 
     access_token_url = 'https://accounts.google.com/o/oauth2/token'
@@ -736,7 +741,7 @@ class GoogleClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         yield 'id', data.get('sub') or data.get('id')
         yield 'username', data.get('nickname')
         yield 'first_name', data.get('name', {}).get('givenName')
@@ -751,18 +756,16 @@ class GoogleClient(OAuth2Client):
 
 class VKClient(OAuth2Client):
 
-    """ Support vk.com.
+    """Support vk.com.
 
     * Dashboard: http://vk.com/editapp?id={consumer_key}
     * Docs: http://vk.com/developers.php?oid=-17680044&p=Authorizing_Sites
     * API reference: http://vk.com/developers.php?oid=-17680044&p=API_Method_Description
-
     """
 
     authorize_url = 'http://api.vkontakte.ru/oauth/authorize'
     access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
-    user_info_url = 'https://api.vk.com/method/getProfiles?' + \
-                    'fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big'
+    user_info_url = 'https://api.vk.com/method/getProfiles?fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big' # noqa
     name = 'vk'
     base_url = 'https://api.vk.com'
 
@@ -773,7 +776,7 @@ class VKClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         resp = data.get('response', [{}])[0]
         yield 'id', resp.get('uid')
         yield 'first_name', resp.get('first_name')
@@ -786,11 +789,10 @@ class VKClient(OAuth2Client):
 
 class YandexClient(OAuth2Client):
 
-    """ Support Yandex.
+    """Support Yandex.
 
     * Dashboard: https://oauth.yandex.com/client/my
     * Docs: http://api.yandex.com/oauth/doc/dg/reference/obtain-access-token.xml
-
     """
 
     access_token_url = 'https://oauth.yandex.com/token'
@@ -802,7 +804,7 @@ class YandexClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
-        """ Parse information from provider. """
+        """Parse information from provider."""
         yield 'id', data.get('id')
         yield 'username', data.get('login')
         yield 'email', data.get('default_email')

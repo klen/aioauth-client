@@ -4,7 +4,9 @@ import asyncio
 
 from aiohttp import web
 import html
+from pprint import pformat
 from aioauth_client import (
+    BitbucketClient,
     FacebookClient,
     GithubClient,
     GoogleClient,
@@ -36,7 +38,7 @@ clients = {
         'init': {
             'client_id': '150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com', # noqa
             'client_secret': 'df3JwpfRf8RIBz-9avNW8Gx7',
-            'params': {'scope': 'email profile'},
+            'scope': 'email profile',
         },
     },
     'yandex': {
@@ -51,7 +53,7 @@ clients = {
         'init': {
             'client_id': '5038699',
             'client_secret': 'WgKadvY82wlnleOAyw6T',
-            'params': {'scope': 'offline,email'}
+            'scope': 'offline,email'
         },
     },
     'facebook': {
@@ -59,7 +61,14 @@ clients = {
         'init': {
             'client_id': '384739235070641',
             'client_secret': '8e3374a4e1e91a2bd5b830a46208c15a',
-            'params': {'scope': 'email'}
+            'scope': 'email'
+        },
+    },
+    'bitbucket': {
+        'class': BitbucketClient,
+        'init': {
+            'consumer_key': '4DKzbyW8JSbnkFyRS5',
+            'consumer_secret': 'AvzZhtvRJhrEJMsGAMsPEuHTRWdMPX9z',
         },
     },
 }
@@ -69,6 +78,7 @@ clients = {
 def index(request):
     return web.Response(text="""
         <ul>
+            <li><a href="/oauth/bitbucket">Login with Bitbucket</a></li>
             <li><a href="/oauth/facebook">Login with Facebook</a></li>
             <li><a href="/oauth/github">Login with Github</a></li>
             <li><a href="/oauth/google">Login with Google</a></li>
@@ -90,7 +100,7 @@ def github(request):
 
     # Get access token
     code = request.GET['code']
-    token, data = yield from github.get_access_token(code)
+    token, _ = yield from github.get_access_token(code)
     assert token
 
     # Get a resource `https://api.github.com/user`
@@ -107,8 +117,10 @@ def oauth(request):
 
     # Create OAuth1/2 client
     Client = clients[provider]['class']
-    client = Client(
-        redirect_uri='http://%s%s' % (request.host, request.path), **clients[provider]['init'])
+    params = clients[provider]['init']
+    client = Client(**params)
+    client.params['oauth_callback' if issubclass(Client, OAuth1Client) else 'redirect_uri'] = \
+        'http://%s%s' % (request.host, request.path)
 
     # Check if is not redirect from provider
     if client.shared_key not in request.GET:
@@ -123,8 +135,7 @@ def oauth(request):
             request.app.token = token
 
         # Redirect client to provider
-        params = clients[provider].get('params', {})
-        return web.HTTPFound(client.get_authorize_url(**params))
+        return web.HTTPFound(client.get_authorize_url())
 
     # For oauth1 we need more work
     if isinstance(client, OAuth1Client):
@@ -146,7 +157,7 @@ def oauth(request):
         "<li>Country, city: %(country)s, %(city)s</li>"
         "</ul>"
     ) % user.__dict__
-    text += "<code>%s</code>" % html.escape(repr(info))
+    text += "<pre>%s</pre>" % html.escape(pformat(info))
     return web.Response(text=text, content_type='text/html')
 
 
