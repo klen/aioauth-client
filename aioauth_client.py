@@ -140,7 +140,8 @@ class Client(object, metaclass=ClientRegistry):
         """String representation."""
         return "%s %s" % (self.name.title(), self.base_url)
 
-    __repr__ = lambda s: "<%s>" % str(s)
+    def __repr__(self):
+        return "<%s>" % self
 
     def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """Make a request to provider."""
@@ -385,7 +386,7 @@ class Flickr(OAuth1Client):
     base_url = 'https://api.flickr.com/'
     name = 'flickr'
     request_token_url = 'http://www.flickr.com/services/oauth/request_token'
-    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1' # noqa
+    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1'  # noqa
 
     @staticmethod
     def user_parse(data):
@@ -765,7 +766,7 @@ class VKClient(OAuth2Client):
 
     authorize_url = 'http://api.vkontakte.ru/oauth/authorize'
     access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
-    user_info_url = 'https://api.vk.com/method/getProfiles?fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big' # noqa
+    user_info_url = 'https://api.vk.com/method/getProfiles?fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big'  # noqa
     name = 'vk'
     base_url = 'https://api.vk.com'
 
