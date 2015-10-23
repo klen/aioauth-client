@@ -3,7 +3,7 @@ AIOHTTP OAuth Client
 
 .. _description:
 
-AIOHTTP OAuth Client -- Short description.
+AIOHTTP OAuth Client -- OAuth support for Aiohttp/Asyncio.
 
 .. _badges:
 
@@ -150,12 +150,13 @@ License
 Licensed under a `MIT license`_.
 
 If you wish to express your appreciation for the role, you are welcome to send
-a postcard to:
+a postcard to: ::
 
     Kirill Klenov
-    pos. Severny 8-3
+    pos. Severny d. 8 kv. 3
     MO, Istra, 143500
     Russia
+
 
 .. _links:
 
