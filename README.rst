@@ -136,12 +136,6 @@ Contributing
 
 Development of AIOHTTP OAuth Client happens at: https://github.com/klen/aioauth-client
 
-
-Contributors
-=============
-
-* klen_ (Kirill Klenov)
-
 .. _license:
 
 License
