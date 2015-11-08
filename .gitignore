@@ -41,6 +41,10 @@ output/*/index.html
 # Sphinx
 docs/_build
 
+# PyCharm/IntelliJ
+.idea
+*.iml
+
 /todo.txt
 /.ropeproject
 /.env
