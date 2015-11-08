@@ -9,8 +9,7 @@ from hashlib import sha1
 from random import SystemRandom
 from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsplit
 
-from aiohttp import web, request as aiorequest
-
+from aiohttp import web, request as aiorequest, BasicAuth
 
 __version__ = "0.7.0"
 __project__ = "aioauth-client"
@@ -370,6 +369,50 @@ class BitbucketClient(OAuth1Client):
         yield 'last_name', user_.get('last_name')
         yield 'picture', user_.get('avatar')
         yield 'link', user_.get('resource_url')
+
+
+class Bitbucket2Client(OAuth2Client):
+
+    """Support Bitbucket API 2.0.
+    * Dashboard: https://bitbucket.org/account/user/peterhudec/api
+    * Docs:https://confluence.atlassian.com/display/BITBUCKET/OAuth+on+Bitbucket+Cloud
+    * API refer: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
+    """
+
+    access_token_url = 'https://bitbucket.org/site/oauth2/access_token'
+    authorize_url = 'https://bitbucket.org/site/oauth2/authorize'
+    base_url = 'https://api.bitbucket.org/2.0/'
+    name = 'bitbucket'
+    user_info_url = 'https://api.bitbucket.org/2.0/user'
+
+    @staticmethod
+    def user_parse(data):
+        """Parse information from the provider."""
+        yield 'id', data.get('uuid')
+        yield 'username', data.get('username')
+        yield 'last_name', data.get('display_name')
+        links = data.get('links', {})
+        yield 'picture', links.get('avatar', {}).get('href')
+        yield 'link', links.get('html', {}).get('href')
+
+    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+        """Request OAuth2 resource."""
+        url = self._get_url(url)
+        if self.access_token:
+            headers = headers or {
+                            'Accept': 'application/json',
+                        }
+            headers['Authorization'] = "Bearer {}".format(self.access_token)
+            auth = None
+        else:
+            auth = BasicAuth(self.client_id, self.client_secret)
+            headers = headers or {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            }
+        # noinspection PyArgumentList
+        return asyncio.wait_for(
+            aiorequest(method, url, params=params, headers=headers, auth=auth, **aio_kwargs), timeout)
 
 
 class Flickr(OAuth1Client):
