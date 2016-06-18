@@ -1,6 +1,6 @@
-VIRTUALENV=$(shell echo "$${VDIR:-'.env'}")
+VIRTUAL_ENV ?= env
 
-all: $(VIRTUALENV)
+all: $(VIRTUAL_ENV)
 
 .PHONY: help
 # target: help - Display callable targets
@@ -22,9 +22,9 @@ clean:
 .PHONY: release
 VERSION?=minor
 # target: release - Bump version
-release:
-	@$(VIRTUALENV)/bin/pip install bumpversion
-	@$(VIRTUALENV)/bin/bumpversion $(VERSION)
+release: $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pip install bumpversion
+	@$(VIRTUAL_ENV)/bin/bumpversion $(VERSION)
 	@git checkout master
 	@git merge develop
 	@git checkout develop
@@ -49,37 +49,37 @@ major:
 .PHONY: register
 # target: register - Register module on PyPi
 register:
-	@$(VIRTUALENV)/bin/python setup.py register
+	@$(VIRTUAL_ENV)/bin/python setup.py register
 
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload: clean
-	@$(VIRTUALENV)/bin/pip install twine wheel
-	@$(VIRTUALENV)/bin/python setup.py sdist bdist_wheel
-	@$(VIRTUALENV)/bin/twine upload dist/*
+	@$(VIRTUAL_ENV)/bin/pip install twine wheel
+	@$(VIRTUAL_ENV)/bin/python setup.py sdist bdist_wheel
+	@$(VIRTUAL_ENV)/bin/twine upload dist/*
 
 # =============
 #  Development
 # =============
 
-$(VIRTUALENV): requirements.txt
-	@[ -d $(VIRTUALENV) ] || virtualenv --no-site-packages --python=python3 $(VIRTUALENV)
-	@$(VIRTUALENV)/bin/pip install -r requirements.txt
-	@touch $(VIRTUALENV)
+$(VIRTUAL_ENV): requirements.txt
+	@[ -d $(VIRTUAL_ENV) ] || virtualenv --no-site-packages --python=python3 $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
+	@touch $(VIRTUAL_ENV)
 
-$(VIRTUALENV)/bin/py.test: $(VIRTUALENV) requirements-tests.txt
-	@$(VIRTUALENV)/bin/pip install -r requirements-tests.txt
-	@touch $(VIRTUALENV)/bin/py.test
+$(VIRTUAL_ENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
+	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
+	@touch $(VIRTUAL_ENV)/bin/py.test
 
 .PHONY: test
 # target: test - Runs tests
-test: $(VIRTUALENV)/bin/py.test
-	@$(VIRTUALENV)/bin/py.test -xs tests.py
+test: $(VIRTUAL_ENV)/bin/py.test
+	@$(VIRTUAL_ENV)/bin/py.test -xs tests.py
 
 .PHONY: t
 t: test
 
 .PHONY: run
-run: $(VIRTUALENV)/bin/py.test
-	@$(VIRTUALENV)/bin/python example/app.py
+run: $(VIRTUAL_ENV)/bin/py.test
+	@$(VIRTUAL_ENV)/bin/python example/app.py
 
