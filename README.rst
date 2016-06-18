@@ -95,7 +95,7 @@ Usage
     # Reload client to authorize_url and get code
     # ...
 
-    otoken = yield from github.get_access_token(code)
+    otoken, _ = yield from github.get_access_token(code)
 
     # Save the token for later use
 
@@ -107,7 +107,7 @@ Usage
         access_token=otoken,
     )
 
-    response = github.request('GET', 'user')
+    response = yield from github.request('GET', 'user')
     user_info = yield from response.json()
 
 
