@@ -142,7 +142,7 @@ class Client(object, metaclass=ClientRegistry):
     def __repr__(self):
         return "<%s>" % self
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, loop=None, **aio_kwargs):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
@@ -196,7 +196,7 @@ class OAuth1Client(Client):
         params.update({'oauth_token': request_token or self.oauth_token})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
         """Make a request to provider."""
         oparams = {
             'oauth_consumer_key': self.consumer_key,
@@ -217,7 +217,8 @@ class OAuth1Client(Client):
             oauth_token_secret=self.oauth_token_secret, **oparams)
         self.logger.debug("%s %s", url, oparams)
         return asyncio.wait_for(
-            aiorequest(method, url, params=oparams, headers=headers, **aio_kwargs), timeout)
+            aiorequest(method, url, params=oparams, headers=headers, loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
     @asyncio.coroutine
     def get_request_token(self, loop=None, **params):
@@ -400,7 +401,7 @@ class Bitbucket2Client(OAuth2Client):
         yield 'picture', links.get('avatar', {}).get('href')
         yield 'link', links.get('html', {}).get('href')
 
-    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         if self.access_token:
@@ -417,7 +418,8 @@ class Bitbucket2Client(OAuth2Client):
             }
         # noinspection PyArgumentList
         return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, auth=auth, **aio_kwargs), timeout)
+            aiorequest(method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
 
 class Flickr(OAuth1Client):
