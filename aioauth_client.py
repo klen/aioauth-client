@@ -147,12 +147,12 @@ class Client(object, metaclass=ClientRegistry):
         raise NotImplementedError('Shouldnt be called.')
 
     @asyncio.coroutine
-    def user_info(self, **kwargs):
+    def user_info(self, loop=None, **kwargs):
         """Load user information from provider."""
         if not self.user_info_url:
             raise NotImplementedError('The provider doesnt support user_info method.')
 
-        response = yield from self.request('GET', self.user_info_url, **kwargs)
+        response = yield from self.request('GET', self.user_info_url, loop=loop, **kwargs)
         if response.status / 100 > 2:
             raise web.HTTPBadRequest(
                     reason='Failed to obtain User information. '
@@ -294,7 +294,7 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         params = params or {}
@@ -307,7 +307,8 @@ class OAuth2Client(Client):
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
         return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, **aio_kwargs), timeout)
+            aiorequest(method, url, params=params, headers=headers, loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
     @asyncio.coroutine
     def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
