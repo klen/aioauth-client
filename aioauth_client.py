@@ -897,4 +897,57 @@ class YandexClient(OAuth2Client):
         yield 'picture', 'https://avatars.yandex.net/get-yapic/%s/islands-200' % data.get(
             'default_avatar_id', 0)
 
+
+class LinkedinClient(OAuth2Client):
+
+    """Support linkedin.com
+
+    * Dashboard: https://www.linkedin.com/developer/apps
+    * Docs: https://developer.linkedin.com/docs/oauth2
+    * API reference: https://developer.linkedin.com/docs/rest-api
+    """
+
+    name = 'linkedin'
+    access_token_key = 'oauth2_access_token'
+    access_token_url = 'https://www.linkedin.com/oauth/v2/accessToken'
+    authorize_url = 'https://www.linkedin.com/oauth/v2/authorization'
+    user_info_url = (
+        'https://api.linkedin.com/v1/people/~:('
+        'id,email-address,first-name,last-name,formatted-name,picture-url,'
+        'public-profile-url,location)?format=json'
+    )
+
+    @staticmethod
+    def user_parse(data):
+        yield 'id', data.get('id')
+        yield 'email', data.get('emailAddress')
+        yield 'first_name', data.get('firstName')
+        yield 'last_name', data.get('lastName')
+        yield 'username', data.get('formattedName')
+        yield 'picture', data.get('pictureUrl')
+        yield 'link', data.get('publicProfileUrl')
+        yield 'country', data.get('location', {}).get('name')
+
+
+class PinterestClient(OAuth2Client):
+
+    """Support pinterest.com
+
+    * Dashboard: https://developers.pinterest.com/apps/
+    * Docs: https://developers.pinterest.com/docs/api/overview/
+    """
+
+    name = 'pinterest'
+    access_token_url = 'https://api.pinterest.com/v1/oauth/token'
+    authorize_url = 'https://api.pinterest.com/oauth/'
+    user_info_url = 'https://api.pinterest.com/v1/me/'
+
+    @staticmethod
+    def user_parse(data):
+        data = data.get('data', {})
+        yield 'id', data.get('id')
+        yield 'first_name', data.get('first_name')
+        yield 'last_name', data.get('last_name')
+        yield 'link', data.get('url')
+
 # pylama:ignore=E501
