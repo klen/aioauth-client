@@ -127,7 +127,7 @@ def oauth(request):
 
         # For oauth1 we need more work
         if isinstance(client, OAuth1Client):
-            token, secret = yield from client.get_request_token()
+            token, secret, _ = yield from client.get_request_token()
 
             # Dirty save a token_secret
             # Dont do it in production

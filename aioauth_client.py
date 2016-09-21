@@ -140,6 +140,7 @@ class Client(object, metaclass=ClientRegistry):
         return "%s %s" % (self.name.title(), self.base_url)
 
     def __repr__(self):
+        """String representation."""
         return "<%s>" % self
 
     def request(self, method, url, params=None, headers=None, loop=None, **aio_kwargs):
@@ -154,9 +155,8 @@ class Client(object, metaclass=ClientRegistry):
 
         response = yield from self.request('GET', self.user_info_url, loop=loop, **kwargs)
         if response.status / 100 > 2:
-            raise web.HTTPBadRequest(
-                    reason='Failed to obtain User information. '
-                           'HTTP status code: %s' % response.status)
+            raise web.HTTPBadRequest(reason='Failed to obtain User information. '
+                                     'HTTP status code: %s' % response.status)
         data = (yield from response.json())
         user = User(**dict(self.user_parse(data)))
         return user, data
@@ -237,7 +237,7 @@ class OAuth1Client(Client):
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
-        return self.oauth_token, self.oauth_token_secret
+        return self.oauth_token, self.oauth_token_secret, data
 
     @asyncio.coroutine
     def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
@@ -268,7 +268,7 @@ class OAuth1Client(Client):
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
 
-        return self.oauth_token, self.oauth_token_secret
+        return self.oauth_token, self.oauth_token_secret, data
 
 
 class OAuth2Client(Client):
@@ -380,6 +380,7 @@ class BitbucketClient(OAuth1Client):
 class Bitbucket2Client(OAuth2Client):
 
     """Support Bitbucket API 2.0.
+
     * Dashboard: https://bitbucket.org/account/user/peterhudec/api
     * Docs:https://confluence.atlassian.com/display/BITBUCKET/OAuth+on+Bitbucket+Cloud
     * API refer: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
@@ -405,9 +406,7 @@ class Bitbucket2Client(OAuth2Client):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         if self.access_token:
-            headers = headers or {
-                            'Accept': 'application/json',
-                        }
+            headers = headers or {'Accept': 'application/json'}
             headers['Authorization'] = "Bearer {}".format(self.access_token)
             auth = None
         else:
@@ -418,8 +417,9 @@ class Bitbucket2Client(OAuth2Client):
             }
         # noinspection PyArgumentList
         return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs),
-            timeout, loop=loop)
+            aiorequest(
+                method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs
+            ), timeout, loop=loop)
 
 
 class Flickr(OAuth1Client):
@@ -900,7 +900,7 @@ class YandexClient(OAuth2Client):
 
 class LinkedinClient(OAuth2Client):
 
-    """Support linkedin.com
+    """Support linkedin.com.
 
     * Dashboard: https://www.linkedin.com/developer/apps
     * Docs: https://developer.linkedin.com/docs/oauth2
@@ -919,6 +919,7 @@ class LinkedinClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
+        """Parse user data."""
         yield 'id', data.get('id')
         yield 'email', data.get('emailAddress')
         yield 'first_name', data.get('firstName')
@@ -931,7 +932,7 @@ class LinkedinClient(OAuth2Client):
 
 class PinterestClient(OAuth2Client):
 
-    """Support pinterest.com
+    """Support pinterest.com.
 
     * Dashboard: https://developers.pinterest.com/apps/
     * Docs: https://developers.pinterest.com/docs/api/overview/
@@ -944,6 +945,7 @@ class PinterestClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
+        """Parse user data."""
         data = data.get('data', {})
         yield 'id', data.get('id')
         yield 'first_name', data.get('first_name')
