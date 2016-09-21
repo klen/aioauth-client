@@ -142,7 +142,7 @@ class Client(object, metaclass=ClientRegistry):
     def __repr__(self):
         return "<%s>" % self
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, loop=None, **aio_kwargs):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
@@ -196,7 +196,7 @@ class OAuth1Client(Client):
         params.update({'oauth_token': request_token or self.oauth_token})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
         """Make a request to provider."""
         oparams = {
             'oauth_consumer_key': self.consumer_key,
@@ -217,7 +217,8 @@ class OAuth1Client(Client):
             oauth_token_secret=self.oauth_token_secret, **oparams)
         self.logger.debug("%s %s", url, oparams)
         return asyncio.wait_for(
-            aiorequest(method, url, params=oparams, headers=headers, **aio_kwargs), timeout)
+            aiorequest(method, url, params=oparams, headers=headers, loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
     @asyncio.coroutine
     def get_request_token(self, loop=None, **params):
@@ -400,7 +401,7 @@ class Bitbucket2Client(OAuth2Client):
         yield 'picture', links.get('avatar', {}).get('href')
         yield 'link', links.get('html', {}).get('href')
 
-    def request(self, method, url, params=None, headers=None, timeout=10, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         if self.access_token:
@@ -417,7 +418,8 @@ class Bitbucket2Client(OAuth2Client):
             }
         # noinspection PyArgumentList
         return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, auth=auth, **aio_kwargs), timeout)
+            aiorequest(method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
 
 class Flickr(OAuth1Client):
@@ -894,5 +896,58 @@ class YandexClient(OAuth2Client):
         yield 'last_name', data.get('last_name')
         yield 'picture', 'https://avatars.yandex.net/get-yapic/%s/islands-200' % data.get(
             'default_avatar_id', 0)
+
+
+class LinkedinClient(OAuth2Client):
+
+    """Support linkedin.com
+
+    * Dashboard: https://www.linkedin.com/developer/apps
+    * Docs: https://developer.linkedin.com/docs/oauth2
+    * API reference: https://developer.linkedin.com/docs/rest-api
+    """
+
+    name = 'linkedin'
+    access_token_key = 'oauth2_access_token'
+    access_token_url = 'https://www.linkedin.com/oauth/v2/accessToken'
+    authorize_url = 'https://www.linkedin.com/oauth/v2/authorization'
+    user_info_url = (
+        'https://api.linkedin.com/v1/people/~:('
+        'id,email-address,first-name,last-name,formatted-name,picture-url,'
+        'public-profile-url,location)?format=json'
+    )
+
+    @staticmethod
+    def user_parse(data):
+        yield 'id', data.get('id')
+        yield 'email', data.get('emailAddress')
+        yield 'first_name', data.get('firstName')
+        yield 'last_name', data.get('lastName')
+        yield 'username', data.get('formattedName')
+        yield 'picture', data.get('pictureUrl')
+        yield 'link', data.get('publicProfileUrl')
+        yield 'country', data.get('location', {}).get('name')
+
+
+class PinterestClient(OAuth2Client):
+
+    """Support pinterest.com
+
+    * Dashboard: https://developers.pinterest.com/apps/
+    * Docs: https://developers.pinterest.com/docs/api/overview/
+    """
+
+    name = 'pinterest'
+    access_token_url = 'https://api.pinterest.com/v1/oauth/token'
+    authorize_url = 'https://api.pinterest.com/oauth/'
+    user_info_url = 'https://api.pinterest.com/v1/me/'
+
+    @staticmethod
+    def user_parse(data):
+        data = data.get('data', {})
+        yield 'id', data.get('id')
+        yield 'first_name', data.get('first_name')
+        yield 'last_name', data.get('last_name')
+        yield 'link', data.get('url')
 
 # pylama:ignore=E501
