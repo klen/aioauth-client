@@ -71,13 +71,10 @@ $(VIRTUAL_ENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
 	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
 	@touch $(VIRTUAL_ENV)/bin/py.test
 
-.PHONY: test
+.PHONY: t test
 # target: test - Runs tests
-test: $(VIRTUAL_ENV)/bin/py.test
-	@$(VIRTUAL_ENV)/bin/py.test -xs tests.py
-
-.PHONY: t
-t: test
+t test: $(VIRTUAL_ENV)/bin/py.test
+	@$(VIRTUAL_ENV)/bin/py.test -xs test_aioauth_client.py
 
 .PHONY: run
 run: $(VIRTUAL_ENV)/bin/py.test

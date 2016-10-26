@@ -49,3 +49,4 @@ docs/_build
 /.ropeproject
 /.env
 /env
+/.cache
