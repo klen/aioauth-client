@@ -11,7 +11,7 @@ from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsp
 
 from aiohttp import web, request as aiorequest, BasicAuth
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
