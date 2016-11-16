@@ -202,7 +202,7 @@ class OAuth1Client(Client):
             'oauth_consumer_key': self.consumer_key,
             'oauth_nonce': sha1(str(random()).encode('ascii')).hexdigest(),
             'oauth_signature_method': self.signature.name,
-            'oauth_timestamp': int(time.time()),
+            'oauth_timestamp': str(int(time.time())),
             'oauth_version': self.version,
         }
         oparams.update(params or {})
