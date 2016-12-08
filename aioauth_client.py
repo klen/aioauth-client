@@ -5,9 +5,10 @@ import base64
 import hmac
 import logging
 import time
+import yarl
 from hashlib import sha1
 from random import SystemRandom
-from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit, urlunsplit
+from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit
 
 from aiohttp import web, request as aiorequest, BasicAuth
 
@@ -45,13 +46,6 @@ class Signature(object):
         bs = s.encode('utf-8')
         return quote(bs, '~').encode('utf-8')
 
-    @staticmethod
-    def _remove_qs(url):
-        """Remove query string from an URL."""
-        scheme, netloc, path, _, fragment = urlsplit(url)
-
-        return urlunsplit((scheme, netloc, path, '', fragment))
-
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
         """Abstract method."""
         raise NotImplementedError('Shouldnt be called.')
@@ -65,10 +59,12 @@ class HmacSha1Signature(Signature):
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
         """Create a signature using HMAC-SHA1."""
-        params = "&".join("%s=%s" % (k, quote(str(value), '~'))
-                          for k, value in sorted(params.items()))
+        # build the url the same way aiohttp will build the query later on
+        # cf https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client.py#L151
+        # and https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client_reqrep.py#L81
+        url = yarl.URL(url).with_query(sorted(params.items()))
+        url, params = str(url).split('?', 1)
         method = method.upper()
-        url = self._remove_qs(url)
 
         signature = b"&".join(map(self._escape, (method, url, params)))
 
@@ -211,6 +207,9 @@ class OAuth1Client(Client):
             oparams['oauth_token'] = self.oauth_token
 
         url = self._get_url(url)
+
+        if urlsplit(url).query:
+            raise ValueError('Request parameters should be in the "params" parameter, not inlined in the URL')
 
         oparams['oauth_signature'] = self.signature.sign(
             self.consumer_secret, method, url,
