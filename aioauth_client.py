@@ -225,15 +225,16 @@ class OAuth1Client(Client):
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
         response = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
+
+        data = yield from response.text()
+        response.close()
+
         if response.status / 100 > 2:
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 request token. HTTP status code: %s'
                 % response.status)
 
-        data = yield from response.text()
         data = dict(parse_qsl(data))
-
-        response.close()
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
