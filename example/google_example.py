@@ -39,18 +39,10 @@ async def oauth(request):
         client_secret=cfg.client_secret
     )
 
-    # getting redirect path after authentication
-    state = request.GET.get('state', '/')
-    if len(state) == 0:
-        state = '/'
-    if state[0] != '/':  # redirect to this site only
-        state = '/'
-
     if 'code' not in request.GET:
         return web.HTTPFound(client.get_authorize_url(
             scope='email profile',
-            redirect_uri=cfg.redirect_uri,
-            state=state
+            redirect_uri=cfg.redirect_uri
         ))
     token, data = await client.get_access_token(
         request.GET['code'],
@@ -58,7 +50,7 @@ async def oauth(request):
     )
     session = await get_session(request)
     session['token'] = token
-    return web.HTTPFound(state)
+    return web.HTTPFound('/')
 
 
 def login_required(fn):
