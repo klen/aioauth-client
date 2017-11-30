@@ -10,7 +10,7 @@ from hashlib import sha1
 from random import SystemRandom
 from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit
 
-from aiohttp import web, request as aiorequest, BasicAuth
+from aiohttp import web, request as aiorequest, BasicAuth, ClientSession
 
 __version__ = "0.10.0"
 __project__ = "aioauth-client"
@@ -143,17 +143,40 @@ class Client(object, metaclass=ClientRegistry):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
+    async def correct_request(self, method, url, params=None, headers=None,
+                             loop=None, **kwargs):
+        """
+        Correct request through AIOHTTP
+
+        :param method:
+        :param url:
+        :param params:
+        :param headers:
+        :param loop:
+        :param kwargs:
+        :return:
+        """
+        async with ClientSession(loop=loop) as client:
+            async with client.request(method, url, params=params,
+                                      headers=headers, **kwargs) as resp:
+                if resp.status / 100 > 2:
+                    raise web.HTTPBadRequest(
+                        reason='HTTP status code: %s' % response.status)
+
+                if 'json' in resp.headers.get('CONTENT-TYPE'):
+                    data = await resp.json()
+                else:
+                    data = dict(parse_qsl(await resp.text()))
+
+        return data
+
     @asyncio.coroutine
     def user_info(self, loop=None, **kwargs):
         """Load user information from provider."""
         if not self.user_info_url:
             raise NotImplementedError('The provider doesnt support user_info method.')
 
-        response = yield from self.request('GET', self.user_info_url, loop=loop, **kwargs)
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(reason='Failed to obtain User information. '
-                                     'HTTP status code: %s' % response.status)
-        data = (yield from response.json())
+        data = yield from self.request('GET', self.user_info_url, loop=loop, **kwargs)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
@@ -216,24 +239,15 @@ class OAuth1Client(Client):
             oauth_token_secret=self.oauth_token_secret, **oparams)
         self.logger.debug("%s %s", url, oparams)
         return asyncio.wait_for(
-            aiorequest(method, url, params=oparams, headers=headers, loop=loop, **aio_kwargs),
+            self.correct_request(method, url, params=params, headers=headers,
+                                 loop=loop, **aio_kwargs),
             timeout, loop=loop)
 
     @asyncio.coroutine
     def get_request_token(self, loop=None, **params):
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
-        response = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
-
-        data = yield from response.text()
-        response.close()
-
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 request token. HTTP status code: %s'
-                % response.status)
-
-        data = dict(parse_qsl(data))
+        data = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -253,17 +267,8 @@ class OAuth1Client(Client):
             raise web.HTTPBadRequest(
                 reason='Failed to obtain OAuth 1.0 access token. Request token is invalid')
 
-        response = yield from self.request('POST', self.access_token_url, params={
+        data = yield from self.request('POST', self.access_token_url, params={
             'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 access token. HTTP status code: %s'
-                % response.status)
-
-        data = yield from response.text()
-        data = dict(parse_qsl(data))
-
-        response.close()
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -295,7 +300,8 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, timeout=10,
+                loop=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         params = params or {}
@@ -308,7 +314,8 @@ class OAuth2Client(Client):
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
         return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, loop=loop, **aio_kwargs),
+            self.correct_request(method, url, params=params, headers=headers,
+                                 loop=loop, **aio_kwargs),
             timeout, loop=loop)
 
     @asyncio.coroutine
@@ -331,20 +338,11 @@ class OAuth2Client(Client):
         if redirect_uri:
             payload['redirect_uri'] = redirect_uri
 
-        response = yield from self.request('POST', self.access_token_url, data=payload, loop=loop)
-        if 'json' in response.headers.get('CONTENT-TYPE'):
-            data = yield from response.json()
-
-        else:
-            data = yield from response.text()
-            data = dict(parse_qsl(data))
-
         try:
+            data = yield from self.request('POST', self.access_token_url, data=payload, loop=loop)
             self.access_token = data['access_token']
         except Exception:
             raise web.HTTPBadRequest(reason='Failed to obtain OAuth access token.')
-        finally:
-            response.close()
 
         return self.access_token, data
 
@@ -417,9 +415,9 @@ class Bitbucket2Client(OAuth2Client):
             }
         # noinspection PyArgumentList
         return asyncio.wait_for(
-            aiorequest(
-                method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs
-            ), timeout, loop=loop)
+            self.correct_request(method, url, params=params, headers=headers,
+                                 loop=loop, **aio_kwargs),
+            timeout, loop=loop)
 
 
 class Flickr(OAuth1Client):
