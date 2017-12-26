@@ -159,7 +159,7 @@ class Client(object, metaclass=ClientRegistry):
                                       headers=headers, **kwargs) as resp:
                 if resp.status / 100 > 2:
                     raise web.HTTPBadRequest(
-                        reason='HTTP status code: %s' % response.status)
+                        reason='HTTP status code: %s' % resp.status)
 
                 if 'json' in resp.headers.get('CONTENT-TYPE'):
                     data = await resp.json()
