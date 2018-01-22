@@ -104,7 +104,7 @@ class ClientRegistry(type):
         return cls
 
 
-class Client(object, metaclass=ClientRegistry):
+class Client(metaclass=ClientRegistry):
 
     """Base abstract OAuth Client class."""
 
@@ -170,7 +170,25 @@ class OAuth1Client(Client):
     name = 'oauth1'
     access_token_key = 'oauth_token'
     request_token_url = None
+    oauth_token = None
+    oauth_token_secret = None
     version = '1.0'
+
+    @property
+    def token(self):
+        return self.oauth_token
+
+    @token.setter
+    def token(self, token):
+        self.oauth_token = token
+
+    @property
+    def token_secret(self):
+        return self.oauth_token_secret
+
+    @token_secret.setter
+    def token_secret(self, token_secret):
+        self.oauth_token_secret = token_secret
 
     def __init__(self, consumer_key, consumer_secret, base_url=None, authorize_url=None,
                  oauth_token=None, oauth_token_secret=None, request_token_url=None,
@@ -277,6 +295,16 @@ class OAuth2Client(Client):
 
     name = 'oauth2'
     shared_key = 'code'
+    access_token = None
+    version = '2.0'
+
+    @property
+    def token(self):
+        return self.access_token
+
+    @token.setter
+    def token(self, token):
+        self.access_token = token
 
     def __init__(self, client_id, client_secret, base_url=None, authorize_url=None,
                  access_token=None, access_token_url=None, access_token_key=None, logger=None,
@@ -300,7 +328,7 @@ class OAuth2Client(Client):
         url = self._get_url(url)
         params = params or {}
 
-        if self.access_token:
+        if self.access_token and params:
             params[self.access_token_key] = self.access_token
 
         headers = headers or {

@@ -68,12 +68,8 @@ Usage
 
     # ...
 
-    twitter = TwitterClient(
-        consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
-        consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
-        oauth_token=oauth_token,
-        oauth_token_secret=oauth_token_secret,
-    )
+    twitter.oauth_token = oauth_token
+    twitter.oauth_token_secret = oauth_token_secret
 
     timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
     content = yield from timeline.read()
@@ -101,11 +97,7 @@ Usage
 
     # ...
 
-    github = GithubClient(
-        client_id='b6281b6fe88fa4c313e6',
-        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
-        access_token=otoken,
-    )
+    github.access_token = otoken
 
     response = yield from github.request('GET', 'user')
     user_info = yield from response.json()
