@@ -5,12 +5,15 @@ import base64
 import hmac
 import logging
 import time
-import yarl
 from hashlib import sha1
 from random import SystemRandom
-from urllib.parse import urlencode, urljoin, quote, parse_qsl, urlsplit
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
-from aiohttp import web, request as aiorequest, BasicAuth
+import aiohttp
+import async_timeout
+import yarl
+from aiohttp import BasicAuth, web
+
 
 __version__ = "0.10.0"
 __project__ = "aioauth-client"
@@ -18,24 +21,22 @@ __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
 
 
+RANDOM = SystemRandom().random
+
+
 class User:
+    """Store user's information."""
 
-    """Store information about user."""
-
-    attrs = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
+    __slots__ = 'id', 'email', 'first_name', 'last_name', 'username', 'picture', \
         'link', 'locale', 'city', 'country', 'gender'
 
-    def __init__(self, **kwargs):
+    def __init__(self, **info):
         """Initialize self data."""
-        for attr in self.attrs:
-            setattr(self, attr, kwargs.get(attr))
-
-
-random = SystemRandom().random
+        for attr in self.__slots__:
+            setattr(self, attr, info.get(attr))
 
 
 class Signature(object):
-
     """Abstract base class for signature methods."""
 
     name = None
@@ -46,18 +47,19 @@ class Signature(object):
         bs = s.encode('utf-8')
         return quote(bs, '~').encode('utf-8')
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
+    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
+             **params):
         """Abstract method."""
         raise NotImplementedError('Shouldnt be called.')
 
 
 class HmacSha1Signature(Signature):
-
     """HMAC-SHA1 signature-method."""
 
     name = 'HMAC-SHA1'
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
+    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
+             **params):
         """Create a signature using HMAC-SHA1."""
         # build the url the same way aiohttp will build the query later on
         # cf https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client.py#L151
@@ -77,12 +79,12 @@ class HmacSha1Signature(Signature):
 
 
 class PlaintextSignature(Signature):
-
     """PLAINTEXT signature-method."""
 
     name = 'PLAINTEXT'
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None, **params):
+    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
+             **params):
         """Create a signature using PLAINTEXT."""
         key = self._escape(consumer_secret) + b'&'
         if oauth_token_secret:
@@ -91,7 +93,6 @@ class PlaintextSignature(Signature):
 
 
 class ClientRegistry(type):
-
     """Meta class to register OAUTH clients."""
 
     clients = {}
@@ -99,13 +100,11 @@ class ClientRegistry(type):
     def __new__(mcs, name, bases, params):
         """Save created client in self registry."""
         cls = super().__new__(mcs, name, bases, params)
-        if cls.name:
-            mcs.clients[cls.name] = cls
+        mcs.clients[cls.name] = cls
         return cls
 
 
 class Client(object, metaclass=ClientRegistry):
-
     """Base abstract OAuth Client class."""
 
     access_token_key = 'access_token'
@@ -139,21 +138,39 @@ class Client(object, metaclass=ClientRegistry):
         """String representation."""
         return "<%s>" % self
 
-    def request(self, method, url, params=None, headers=None, loop=None, **aio_kwargs):
+    async def _request(self, method, url, loop=None, timeout=None, **kwargs):
+        """Make a request through AIOHTTP."""
+        try:
+            async with async_timeout.timeout(timeout):
+                async with aiohttp.ClientSession(loop=loop) as session:
+                    async with session.request(method, url, **kwargs) as response:
+
+                        if response.status / 100 > 2:
+                            raise web.HTTPBadRequest(
+                                reason='HTTP status code: %s' % response.status)
+
+                        if 'json' in response.headers.get('CONTENT-TYPE'):
+                            data = await response.json()
+                        else:
+                            data = await response.text()
+                            data = dict(parse_qsl(data))
+
+                        return data
+        except asyncio.TimeoutError:
+            raise web.HTTPBadRequest(reason='HTTP timeout')
+
+    def request(self, method, url, params=None, headers=None, loop=None,
+                **aio_kwargs):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
-    @asyncio.coroutine
-    def user_info(self, loop=None, **kwargs):
+    async def user_info(self, loop=None, **kwargs):
         """Load user information from provider."""
         if not self.user_info_url:
-            raise NotImplementedError('The provider doesnt support user_info method.')
+            raise NotImplementedError(
+                'The provider doesnt support user_info method.')
 
-        response = yield from self.request('GET', self.user_info_url, loop=loop, **kwargs)
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(reason='Failed to obtain User information. '
-                                     'HTTP status code: %s' % response.status)
-        data = (yield from response.json())
+        data = await self.request('GET', self.user_info_url, loop=loop, **kwargs)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
@@ -164,7 +181,6 @@ class Client(object, metaclass=ClientRegistry):
 
 
 class OAuth1Client(Client):
-
     """Implement OAuth1."""
 
     name = 'oauth1'
@@ -172,12 +188,16 @@ class OAuth1Client(Client):
     request_token_url = None
     version = '1.0'
 
-    def __init__(self, consumer_key, consumer_secret, base_url=None, authorize_url=None,
-                 oauth_token=None, oauth_token_secret=None, request_token_url=None,
-                 access_token_url=None, access_token_key=None, logger=None, signature=None,
+    def __init__(self, consumer_key, consumer_secret, base_url=None,
+                 authorize_url=None,
+                 oauth_token=None, oauth_token_secret=None,
+                 request_token_url=None,
+                 access_token_url=None, access_token_key=None, logger=None,
+                 signature=None,
                  **params):
         """Initialize the client."""
-        super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
+        super().__init__(base_url, authorize_url, access_token_key,
+                         access_token_url, logger)
 
         self.oauth_token = oauth_token
         self.oauth_token_secret = oauth_token_secret
@@ -192,11 +212,11 @@ class OAuth1Client(Client):
         params.update({'oauth_token': request_token or self.oauth_token})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
+    def request(self, method, url, params=None, **aio_kwargs):
         """Make a request to provider."""
         oparams = {
             'oauth_consumer_key': self.consumer_key,
-            'oauth_nonce': sha1(str(random()).encode('ascii')).hexdigest(),
+            'oauth_nonce': sha1(str(RANDOM()).encode('ascii')).hexdigest(),
             'oauth_signature_method': self.signature.name,
             'oauth_timestamp': str(int(time.time())),
             'oauth_version': self.version,
@@ -209,38 +229,27 @@ class OAuth1Client(Client):
         url = self._get_url(url)
 
         if urlsplit(url).query:
-            raise ValueError('Request parameters should be in the "params" parameter, not inlined in the URL')
+            raise ValueError(
+                'Request parameters should be in the "params" parameter, '
+                'not inlined in the URL')
 
         oparams['oauth_signature'] = self.signature.sign(
             self.consumer_secret, method, url,
             oauth_token_secret=self.oauth_token_secret, **oparams)
         self.logger.debug("%s %s", url, oparams)
-        return asyncio.wait_for(
-            aiorequest(method, url, params=oparams, headers=headers, loop=loop, **aio_kwargs),
-            timeout, loop=loop)
 
-    @asyncio.coroutine
-    def get_request_token(self, loop=None, **params):
+        return self._request(method, url, params=oparams, **aio_kwargs)
+
+    async def get_request_token(self, loop=None, **params):
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
-        response = yield from self.request('GET', self.request_token_url, params=params, loop=loop)
-
-        data = yield from response.text()
-        response.close()
-
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 request token. HTTP status code: %s'
-                % response.status)
-
-        data = dict(parse_qsl(data))
+        data = await self.request('GET', self.request_token_url, params=params, loop=loop)
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
         return self.oauth_token, self.oauth_token_secret, data
 
-    @asyncio.coroutine
-    def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
+    async def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -251,19 +260,11 @@ class OAuth1Client(Client):
 
         if request_token and self.oauth_token != request_token:
             raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 access token. Request token is invalid')
+                reason='Failed to obtain OAuth 1.0 access token. '
+                       'Request token is invalid')
 
-        response = yield from self.request('POST', self.access_token_url, params={
+        data = await self.request('POST', self.access_token_url, params={
             'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
-        if response.status / 100 > 2:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 access token. HTTP status code: %s'
-                % response.status)
-
-        data = yield from response.text()
-        data = dict(parse_qsl(data))
-
-        response.close()
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -272,17 +273,19 @@ class OAuth1Client(Client):
 
 
 class OAuth2Client(Client):
-
     """Implement OAuth2."""
 
     name = 'oauth2'
     shared_key = 'code'
 
-    def __init__(self, client_id, client_secret, base_url=None, authorize_url=None,
-                 access_token=None, access_token_url=None, access_token_key=None, logger=None,
+    def __init__(self, client_id, client_secret, base_url=None,
+                 authorize_url=None,
+                 access_token=None, access_token_url=None,
+                 access_token_key=None, logger=None,
                  **params):
         """Initialize the client."""
-        super().__init__(base_url, authorize_url, access_token_key, access_token_url, logger)
+        super().__init__(base_url, authorize_url, access_token_key,
+                         access_token_url, logger)
 
         self.access_token = access_token
         self.client_id = client_id
@@ -295,7 +298,7 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         params = params or {}
@@ -307,12 +310,9 @@ class OAuth2Client(Client):
             'Accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
-        return asyncio.wait_for(
-            aiorequest(method, url, params=params, headers=headers, loop=loop, **aio_kwargs),
-            timeout, loop=loop)
+        return self._request(method, url, params=params, headers=headers, **aio_kwargs)
 
-    @asyncio.coroutine
-    def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
+    async def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
         """Get an access_token from OAuth provider.
 
         :returns: (access_token, provider_data)
@@ -331,30 +331,22 @@ class OAuth2Client(Client):
         if redirect_uri:
             payload['redirect_uri'] = redirect_uri
 
-        response = yield from self.request('POST', self.access_token_url, data=payload, loop=loop)
-        if 'json' in response.headers.get('CONTENT-TYPE'):
-            data = yield from response.json()
-
-        else:
-            data = yield from response.text()
-            data = dict(parse_qsl(data))
+        data = await self.request('POST', self.access_token_url, data=payload, loop=loop)
 
         try:
             self.access_token = data['access_token']
+
         except KeyError:
             self.logger.error(
                 'Error when getting the access token.\nData returned by OAuth server: %r',
                 data,
             )
             raise web.HTTPBadRequest(reason='Failed to obtain OAuth access token.')
-        finally:
-            response.close()
 
         return self.access_token, data
 
 
 class BitbucketClient(OAuth1Client):
-
     """Support Bitbucket.
 
     * Dashboard: https://bitbucket.org/account/user/peterhudec/api
@@ -382,7 +374,6 @@ class BitbucketClient(OAuth1Client):
 
 
 class Bitbucket2Client(OAuth2Client):
-
     """Support Bitbucket API 2.0.
 
     * Dashboard: https://bitbucket.org/account/user/peterhudec/api
@@ -406,7 +397,7 @@ class Bitbucket2Client(OAuth2Client):
         yield 'picture', links.get('avatar', {}).get('href')
         yield 'link', links.get('html', {}).get('href')
 
-    def request(self, method, url, params=None, headers=None, timeout=10, loop=None, **aio_kwargs):
+    def request(self, method, url, headers=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         if self.access_token:
@@ -414,20 +405,16 @@ class Bitbucket2Client(OAuth2Client):
             headers['Authorization'] = "Bearer {}".format(self.access_token)
             auth = None
         else:
-            auth = BasicAuth(self.client_id, self.client_secret)
             headers = headers or {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
             }
-        # noinspection PyArgumentList
-        return asyncio.wait_for(
-            aiorequest(
-                method, url, params=params, headers=headers, auth=auth, loop=loop, **aio_kwargs
-            ), timeout, loop=loop)
+            auth = BasicAuth(self.client_id, self.client_secret)
+
+        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs),
 
 
 class Flickr(OAuth1Client):
-
     """Support Flickr.
 
     * Dashboard: https://www.flickr.com/services/apps/
@@ -440,7 +427,8 @@ class Flickr(OAuth1Client):
     base_url = 'https://api.flickr.com/'
     name = 'flickr'
     request_token_url = 'http://www.flickr.com/services/oauth/request_token'
-    user_info_url = 'http://api.flickr.com/services/rest?method=flickr.test.login&format=json&nojsoncallback=1'  # noqa
+    user_info_url = 'http://api.flickr.com/services/rest?' \
+                    'method=flickr.test.login&format=json&nojsoncallback=1'  # noqa
 
     @staticmethod
     def user_parse(data):
@@ -448,13 +436,13 @@ class Flickr(OAuth1Client):
         user_ = data.get('user', {})
         yield 'id', data.get('user_nsid') or user_.get('id')
         yield 'username', user_.get('username', {}).get('_content')
-        first_name, _, last_name = data.get('fullname', {}).get('_content', '').partition(' ')
+        first_name, _, last_name = data.get(
+            'fullname', {}).get('_content', '').partition(' ')
         yield 'first_name', first_name
         yield 'last_name', last_name
 
 
 class Meetup(OAuth1Client):
-
     """Support Meetup.
 
     * Dashboard: http://www.meetup.com/meetup_api/oauth_consumers/
@@ -477,7 +465,6 @@ class Meetup(OAuth1Client):
 
 
 class Plurk(OAuth1Client):
-
     """Support Plurk.
 
     * Dashboard: http://www.plurk.com/PlurkApp/
@@ -504,13 +491,13 @@ class Plurk(OAuth1Client):
         yield 'first_name', first_name
         yield 'last_name', last_name
         yield 'picture', 'http://avatars.plurk.com/{0}-big2.jpg'.format(_id)
-        city, country = map(lambda s: s.strip(), _user.get('location', ',').split(','))
+        city, country = map(lambda s: s.strip(),
+                            _user.get('location', ',').split(','))
         yield 'city', city
         yield 'country', country
 
 
 class TwitterClient(OAuth1Client):
-
     """Support Twitter.
 
     * Dashboard: https://dev.twitter.com/apps
@@ -523,7 +510,8 @@ class TwitterClient(OAuth1Client):
     base_url = 'https://api.twitter.com/1.1/'
     name = 'twitter'
     request_token_url = 'https://api.twitter.com/oauth/request_token'
-    user_info_url = 'https://api.twitter.com/1.1/account/verify_credentials.json'
+    user_info_url = 'https://api.twitter.com/1.1/account/' \
+                    'verify_credentials.json'
 
     @staticmethod
     def user_parse(data):
@@ -536,13 +524,13 @@ class TwitterClient(OAuth1Client):
         yield 'locale', data.get('lang')
         yield 'link', data.get('url')
         yield 'username', data.get('screen_name')
-        city, _, country = map(lambda s: s.strip(), data.get('location', '').partition(','))
+        city, _, country = map(lambda s: s.strip(),
+                               data.get('location', '').partition(','))
         yield 'city', city
         yield 'country', country
 
 
 class TumblrClient(OAuth1Client):
-
     """Support Tumblr.
 
     * Dashboard: http://www.tumblr.com/oauth/apps
@@ -567,7 +555,6 @@ class TumblrClient(OAuth1Client):
 
 
 class VimeoClient(OAuth1Client):
-
     """Support Vimeo."""
 
     access_token_url = 'https://vimeo.com/oauth/access_token'
@@ -575,7 +562,8 @@ class VimeoClient(OAuth1Client):
     base_url = 'https://vimeo.com/api/rest/v2/'
     name = 'vimeo'
     request_token_url = 'https://vimeo.com/oauth/request_token'
-    user_info_url = 'http://vimeo.com/api/rest/v2?format=json&method=vimeo.oauth.checkAccessToken'
+    user_info_url = 'http://vimeo.com/api/rest/v2?' \
+                    'format=json&method=vimeo.oauth.checkAccessToken'
 
     @staticmethod
     def user_parse(data):
@@ -589,7 +577,6 @@ class VimeoClient(OAuth1Client):
 
 
 class YahooClient(OAuth1Client):
-
     """Support Yahoo.
 
     * Dashboard: https://developer.vimeo.com/apps
@@ -620,13 +607,13 @@ class YahooClient(OAuth1Client):
         elif isinstance(emails, dict):
             yield 'email', emails.get('handle')
         yield 'picture', _user.get('image', {}).get('imageUrl')
-        city, country = map(lambda s: s.strip(), _user.get('location', ',').split(','))
+        city, country = map(lambda s: s.strip(),
+                            _user.get('location', ',').split(','))
         yield 'city', city
         yield 'country', country
 
 
 class AmazonClient(OAuth2Client):
-
     """Support Amazon.
 
     * Dashboard: https://developer.amazon.com/lwa/sp/overview.html
@@ -647,7 +634,6 @@ class AmazonClient(OAuth2Client):
 
 
 class EventbriteClient(OAuth2Client):
-
     """Support Eventbrite.
 
     * Dashboard: http://www.eventbrite.com/myaccount/apps/
@@ -672,7 +658,6 @@ class EventbriteClient(OAuth2Client):
 
 
 class FacebookClient(OAuth2Client):
-
     """Support Facebook.
 
     * Dashboard: https://developers.facebook.com/apps
@@ -687,12 +672,13 @@ class FacebookClient(OAuth2Client):
     name = 'facebook'
     user_info_url = 'https://graph.facebook.com/me'
 
-    @asyncio.coroutine
-    def user_info(self, params=None, **kwargs):
+    async def user_info(self, params=None, **kwargs):
         """Facebook required fields-param."""
         params = params or {}
-        params['fields'] = 'id,email,first_name,last_name,name,link,locale,gender,location'
-        return (yield from super(FacebookClient, self).user_info(params=params, **kwargs))
+        params[
+            'fields'] = 'id,email,first_name,last_name,name,link,locale,' \
+                        'gender,location'
+        return await super(FacebookClient, self).user_info(params=params, **kwargs)
 
     @staticmethod
     def user_parse(data):
@@ -703,7 +689,8 @@ class FacebookClient(OAuth2Client):
         yield 'first_name', data.get('first_name')
         yield 'last_name', data.get('last_name')
         yield 'username', data.get('name')
-        yield 'picture', 'http://graph.facebook.com/{0}/picture?type=large'.format(id_)
+        yield 'picture', 'http://graph.facebook.com/{0}/picture?' \
+                         'type=large'.format(id_)
         yield 'link', data.get('link')
         yield 'locale', data.get('locale')
         yield 'gender', data.get('gender')
@@ -717,7 +704,6 @@ class FacebookClient(OAuth2Client):
 
 
 class FoursquareClient(OAuth2Client):
-
     """Support Foursquare.
 
     * Dashboard: https://foursquare.com/developers/apps
@@ -745,7 +731,6 @@ class FoursquareClient(OAuth2Client):
 
 
 class GithubClient(OAuth2Client):
-
     """Support Github.
 
     * Dashboard: https://github.com/settings/applications/
@@ -779,7 +764,6 @@ class GithubClient(OAuth2Client):
 
 
 class GoogleClient(OAuth2Client):
-
     """Support Google.
 
     * Dashboard: https://console.developers.google.com/project
@@ -810,7 +794,6 @@ class GoogleClient(OAuth2Client):
 
 
 class VKClient(OAuth2Client):
-
     """Support vk.com.
 
     * Dashboard: http://vk.com/editapp?id={consumer_key}
@@ -820,7 +803,9 @@ class VKClient(OAuth2Client):
 
     authorize_url = 'http://api.vk.com/oauth/authorize'
     access_token_url = 'https://api.vk.com/oauth/access_token'
-    user_info_url = 'https://api.vk.com/method/getProfiles?fields=uid,first_name,last_name,nickname,sex,bdate,city,country,timezone,photo_big'  # noqa
+    user_info_url = 'https://api.vk.com/method/getProfiles?' \
+                    'fields=uid,first_name,last_name,nickname,sex,bdate,city,' \
+                    'country,timezone,photo_big'  # noqa
     name = 'vk'
     base_url = 'https://api.vk.com'
 
@@ -843,7 +828,6 @@ class VKClient(OAuth2Client):
 
 
 class OdnoklassnikiClient(OAuth2Client):
-
     """Support ok.ru.
 
     * Dashboard: http://ok.ru/dk?st.cmd=appsInfoMyDevList
@@ -853,7 +837,9 @@ class OdnoklassnikiClient(OAuth2Client):
 
     authorize_url = 'https://connect.ok.ru/oauth/authorize'
     access_token_url = 'https://api.odnoklassniki.ru/oauth/token.do'
-    user_info_url = 'http://api.ok.ru/api/users/getCurrentUser?fields=uid,first_name,last_name,gender,city,country,pic128max'  # noqa
+    user_info_url = 'http://api.ok.ru/api/users/getCurrentUser?' \
+                    'fields=uid,first_name,last_name,gender,city,' \
+                    'country,pic128max'  # noqa
     name = 'odnoklassniki'
     base_url = 'https://api.ok.ru'
 
@@ -876,7 +862,6 @@ class OdnoklassnikiClient(OAuth2Client):
 
 
 class YandexClient(OAuth2Client):
-
     """Support Yandex.
 
     * Dashboard: https://oauth.yandex.com/client/my
@@ -903,7 +888,6 @@ class YandexClient(OAuth2Client):
 
 
 class LinkedinClient(OAuth2Client):
-
     """Support linkedin.com.
 
     * Dashboard: https://www.linkedin.com/developer/apps
@@ -935,7 +919,6 @@ class LinkedinClient(OAuth2Client):
 
 
 class PinterestClient(OAuth2Client):
-
     """Support pinterest.com.
 
     * Dashboard: https://developers.pinterest.com/apps/

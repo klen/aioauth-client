@@ -95,11 +95,11 @@ def github(request):
         client_id='b6281b6fe88fa4c313e6',
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
     )
-    if 'code' not in request.GET:
+    if 'code' not in request.query:
         return web.HTTPFound(github.get_authorize_url(scope='user:email'))
 
     # Get access token
-    code = request.GET['code']
+    code = request.query['code']
     token, _ = yield from github.get_access_token(code)
     assert token
 
@@ -123,7 +123,7 @@ def oauth(request):
         'http://%s%s' % (request.host, request.path)
 
     # Check if is not redirect from provider
-    if client.shared_key not in request.GET:
+    if client.shared_key not in request.query:
 
         # For oauth1 we need more work
         if isinstance(client, OAuth1Client):
@@ -142,21 +142,21 @@ def oauth(request):
         client.oauth_token_secret = request.app.secret
         client.oauth_token = request.app.token
 
-    yield from client.get_access_token(request.GET)
+    yield from client.get_access_token(request.query)
     user, info = yield from client.user_info()
     text = (
         "<a href='/'>back</a><br/><br/>"
         "<ul>"
-        "<li>ID: %(id)s</li>"
-        "<li>Username: %(username)s</li>"
-        "<li>First, last name: %(first_name)s, %(last_name)s</li>"
-        "<li>Gender: %(gender)s</li>"
-        "<li>Email: %(email)s</li>"
-        "<li>Link: %(link)s</li>"
-        "<li>Picture: %(picture)s</li>"
-        "<li>Country, city: %(country)s, %(city)s</li>"
+        "<li>ID: {u.id}</li>"
+        "<li>Username: {u.username}</li>"
+        "<li>First, last name: {u.first_name}, {u.last_name}</li>"
+        "<li>Gender: {u.gender}</li>"
+        "<li>Email: {u.email}</li>"
+        "<li>Link: {u.link}</li>"
+        "<li>Picture: {u.picture}</li>"
+        "<li>Country, city: {u.country}, {u.city}</li>"
         "</ul>"
-    ) % user.__dict__
+    ).format(u=user)
     text += "<pre>%s</pre>" % html.escape(pformat(info))
     return web.Response(text=text, content_type='text/html')
 

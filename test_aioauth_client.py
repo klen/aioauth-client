@@ -8,6 +8,12 @@ def loop():
     return asyncio.get_event_loop()
 
 
+def test_userinfo_container():
+    user = User(email='email')
+    assert user.email == 'email'
+    assert user.id == None
+
+
 def test_oauth1(loop):  # noqa
     twitter = TwitterClient(
         consumer_key='oUXo1M7q1rlsPXm4ER3dWnMt8',
