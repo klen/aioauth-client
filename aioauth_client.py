@@ -342,6 +342,10 @@ class OAuth2Client(Client):
         try:
             self.access_token = data['access_token']
         except Exception:
+            self.logger.error(
+                'Error when getting the access token.\nData returned by OAuth server: %s',
+                data,
+            )
             raise web.HTTPBadRequest(reason='Failed to obtain OAuth access token.')
         finally:
             response.close()
