@@ -26,7 +26,7 @@ AIOHTTP OAuth Client -- OAuth support for Aiohttp/Asyncio.
 Requirements
 =============
 
-- python >= 3.3
+- python >= 3.5
 
 .. _installation:
 
