@@ -68,8 +68,8 @@ Usage
 
     # ...
 
-    twitter.oauth_token = oauth_token
-    twitter.oauth_token_secret = oauth_token_secret
+    twitter.token = oauth_token
+    twitter.token_secret = oauth_token_secret
 
     timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
     content = yield from timeline.read()
@@ -97,7 +97,7 @@ Usage
 
     # ...
 
-    github.access_token = otoken
+    github.token = otoken
 
     response = yield from github.request('GET', 'user')
     user_info = yield from response.json()
