@@ -411,7 +411,7 @@ class Bitbucket2Client(OAuth2Client):
             }
             auth = BasicAuth(self.client_id, self.client_secret)
 
-        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs),
+        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs)
 
 
 class DiscordClient(OAuth2Client):
@@ -473,6 +473,39 @@ class Flickr(OAuth1Client):
             'fullname', {}).get('_content', '').partition(' ')
         yield 'first_name', first_name
         yield 'last_name', last_name
+
+
+class LichessClient(OAuth2Client):
+    """Support Lichess.
+
+    * Dashboard: https://lichess.org/account/oauth/app
+    * Docs: https://lichess.org/api#section/Authentication
+    * API reference: https://lichess.org/api
+    """
+
+    access_token_url = 'https://oauth.lichess.org/oauth'
+    authorize_url = 'https://oauth.lichess.org/oauth/authorize'
+    base_url = 'https://lichess.org/'
+    name = 'lichess'
+    user_info_url = 'https://lichess.org/api/account'
+
+    @staticmethod
+    def user_parse(data):
+        """Parse information from provider."""
+        yield 'id', data.get('id')
+        yield 'username', data.get('username')
+        yield 'first_name', data.get('profile').get("firstName")
+        yield 'last_name', data.get('profile').get("lastName")
+        yield 'country', data.get('profile').get("country")
+
+    def request(self, method, url, headers=None, **aio_kwargs):
+        """Request OAuth2 resource."""
+        url = self._get_url(url)
+        headers = headers or {'Accept': 'application/json'}
+        if self.access_token:
+            headers['Authorization'] = "Bearer {}".format(self.access_token)
+
+        return self._request(method, url, headers=headers, **aio_kwargs),
 
 
 class Meetup(OAuth1Client):
