@@ -125,7 +125,7 @@ Run example with command: ::
 
     make run
 
-Open http://fuf.me:5000 in your browser.
+Open http://localhost:5000 in your browser.
 
 .. _bugtracker:
 

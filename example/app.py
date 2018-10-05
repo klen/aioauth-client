@@ -12,7 +12,6 @@ from aioauth_client import (
     GoogleClient,
     OAuth1Client,
     TwitterClient,
-    VKClient,
     YandexClient,
 )
 
@@ -48,14 +47,6 @@ clients = {
             'client_secret': '1d2e6fdcc23b45849def6a34b43ac2d8',
         },
     },
-    'vk': {
-        'class': VKClient,
-        'init': {
-            'client_id': '5038699',
-            'client_secret': 'WgKadvY82wlnleOAyw6T',
-            'scope': 'offline,email'
-        },
-    },
     'facebook': {
         'class': FacebookClient,
         'init': {
@@ -83,7 +74,6 @@ def index(request):
             <li><a href="/oauth/github">Login with Github</a></li>
             <li><a href="/oauth/google">Login with Google</a></li>
             <li><a href="/oauth/twitter">Login with Twitter</a></li>
-            <li><a href="/oauth/vk">Login with VK</a></li>
         </ul>
     """, content_type="text/html")
 

@@ -805,8 +805,8 @@ class GoogleClient(OAuth2Client):
     * API explorer: https://developers.google.com/oauthplayground/
     """
 
-    access_token_url = 'https://accounts.google.com/o/oauth2/token'
-    authorize_url = 'https://accounts.google.com/o/oauth2/auth'
+    authorize_url = 'https://accounts.google.com/o/oauth2/v2/auth'
+    access_token_url = 'https://www.googleapis.com/oauth2/v4/token'
     base_url = 'https://www.googleapis.com/plus/v1/'
     name = 'google'
     user_info_url = 'https://www.googleapis.com/plus/v1/people/me'

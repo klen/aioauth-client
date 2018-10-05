@@ -76,7 +76,17 @@ $(VIRTUAL_ENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
 t test: $(VIRTUAL_ENV)/bin/py.test
 	@$(VIRTUAL_ENV)/bin/py.test -xs test_aioauth_client.py
 
-.PHONY: run
-run: $(VIRTUAL_ENV)/bin/py.test
+OPEN := $(shell command -v open 2> /dev/null)
+open:
+	sleep 1
+ifdef OPEN
+	open http://localhost:5000
+endif
+
+server: $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/python example/app.py
+
+.PHONY: run
+run:
+	make -j server open
 
