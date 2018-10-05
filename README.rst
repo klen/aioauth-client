@@ -75,6 +75,10 @@ Usage
         oauth_token_secret=oauth_token_secret,
     )
 
+    # Or you can use this if you have initilized client already
+    # twitter.access_token = oauth_token
+    # twitter.access_token_secret = oauth_token_secret
+
     timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
     content = yield from timeline.read()
     print(content)
@@ -106,6 +110,9 @@ Usage
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
         access_token=otoken,
     )
+
+    # Or you can use this if you have initilized client already
+    # github.access_token = otoken
 
     response = yield from github.request('GET', 'user')
     user_info = yield from response.json()
