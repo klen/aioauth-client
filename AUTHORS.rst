@@ -14,3 +14,4 @@ Contributors
 * Arthur Darcet (https://github.com/arthurdarcet)
 * Dima Moroz (https://github.com/dmrz)
 * Don Brown (https://github.com/mrdon)
+* Liz (https://github.com/stillinbeta)
