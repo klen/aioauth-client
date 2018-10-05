@@ -14,6 +14,7 @@ def test_userinfo_container():
     assert user.id == None
 
 
+@pytest.mark.skip
 def test_oauth1(loop):  # noqa
     twitter = TwitterClient(
         consumer_key='oUXo1M7q1rlsPXm4ER3dWnMt8',
@@ -53,3 +54,5 @@ def test_oauth2(loop):  # noqa
 
     with pytest.raises(web.HTTPBadRequest):
         loop.run_until_complete(coro)
+
+# pylama:ignore=W0401,E711
