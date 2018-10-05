@@ -125,14 +125,14 @@ def oauth(request):
             request.app.token = token
 
         # Redirect client to provider
-        return web.HTTPFound(client.get_authorize_url())
+        return web.HTTPFound(client.get_authorize_url(access_type='offline'))
 
     # For oauth1 we need more work
     if isinstance(client, OAuth1Client):
         client.oauth_token_secret = request.app.secret
         client.oauth_token = request.app.token
 
-    yield from client.get_access_token(request.query)
+    _, meta = yield from client.get_access_token(request.query)
     user, info = yield from client.user_info()
     text = (
         "<a href='/'>back</a><br/><br/>"
@@ -148,6 +148,7 @@ def oauth(request):
         "</ul>"
     ).format(u=user)
     text += "<pre>%s</pre>" % html.escape(pformat(info))
+    text += "<pre>%s</pre>" % html.escape(pformat(meta))
     return web.Response(text=text, content_type='text/html')
 
 
