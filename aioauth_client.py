@@ -411,7 +411,7 @@ class Bitbucket2Client(OAuth2Client):
             }
             auth = BasicAuth(self.client_id, self.client_secret)
 
-        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs),
+        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs)
 
 
 class DiscordClient(OAuth2Client):
