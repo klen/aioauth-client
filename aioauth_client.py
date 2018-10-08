@@ -505,7 +505,7 @@ class LichessClient(OAuth2Client):
         if self.access_token:
             headers['Authorization'] = "Bearer {}".format(self.access_token)
 
-        return self._request(method, url, headers=headers, **aio_kwargs),
+        return self._request(method, url, headers=headers, **aio_kwargs)
 
 
 class Meetup(OAuth1Client):
