@@ -840,9 +840,9 @@ class GoogleClient(OAuth2Client):
 
     authorize_url = 'https://accounts.google.com/o/oauth2/v2/auth'
     access_token_url = 'https://www.googleapis.com/oauth2/v4/token'
-    base_url = 'https://www.googleapis.com/plus/v1/'
+    base_url = 'https://www.googleapis.com/userinfo/v2/'
     name = 'google'
-    user_info_url = 'https://www.googleapis.com/plus/v1/people/me'
+    user_info_url = 'https://www.googleapis.com/userinfo/v2/me'
 
     @staticmethod
     def user_parse(data):
@@ -854,9 +854,6 @@ class GoogleClient(OAuth2Client):
         yield 'locale', data.get('language')
         yield 'link', data.get('url')
         yield 'picture', data.get('image', {}).get('url')
-        for email in data.get('emails', []):
-            if email['type'] == 'account':
-                yield 'email', email['value']
 
 
 class VKClient(OAuth2Client):
