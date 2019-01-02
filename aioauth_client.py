@@ -878,7 +878,7 @@ class VKClient(OAuth2Client):
     def __init__(self, version='5.9.2', *args, **kwargs):
         """Set default scope."""
         super(VKClient, self).__init__(*args, **kwargs)
-        self.user_info_url = f"{self.user_info_url}&v={version}"
+        self.user_info_url = "{0}&v={1}".format(self.user_info_url, version)
         self.params.setdefault('scope', 'offline')
 
     @staticmethod
