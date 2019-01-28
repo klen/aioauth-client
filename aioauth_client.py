@@ -298,13 +298,14 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, access_token=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
         params = params or {}
 
-        if self.access_token:
-            params[self.access_token_key] = self.access_token
+        access_token = access_token or self.access_token
+        if access_token:
+            params[self.access_token_key] = access_token
 
         headers = headers or {
             'Accept': 'application/json',
@@ -396,21 +397,17 @@ class Bitbucket2Client(OAuth2Client):
         yield 'picture', links.get('avatar', {}).get('href')
         yield 'link', links.get('html', {}).get('href')
 
-    def request(self, method, url, headers=None, **aio_kwargs):
-        """Request OAuth2 resource."""
-        url = self._get_url(url)
-        if self.access_token:
-            headers = headers or {'Accept': 'application/json'}
-            headers['Authorization'] = "Bearer {}".format(self.access_token)
-            auth = None
+    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
+        """Setup Authorization Header.."""
+        auth = None
+        access_token = params.pop(self.access_token_key, None)
+        if access_token:
+            headers['Authorization'] = "Bearer %s" % access_token
         else:
-            headers = headers or {
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            }
             auth = BasicAuth(self.client_id, self.client_secret)
 
-        return self._request(method, url, headers=headers, auth=auth, **aio_kwargs)
+        return super(Bitbucket2Client, self)._request(
+            method, url, headers=headers, params=params, auth=auth, **aio_kwargs)
 
 
 class DiscordClient(OAuth2Client):
@@ -436,14 +433,13 @@ class DiscordClient(OAuth2Client):
         yield 'picture', "https://cdn.discordapp.com/avatars/{}/{}.png".format(
             data.get('id'), data.get('avatar'))
 
-    def request(self, method, url, headers=None, **aio_kwargs):
-        """Request OAuth2 resource."""
-        url = self._get_url(url)
-        headers = headers or {'Accept': 'application/json'}
-        if self.access_token:
-            headers['Authorization'] = "Bearer {}".format(self.access_token)
-
-        return self._request(method, url, headers=headers, **aio_kwargs)
+    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
+        """Setup Authorization Header.."""
+        access_token = params.pop(self.access_token_key, None)
+        if access_token:
+            headers['Authorization'] = "Bearer %s" % access_token
+        return super(DiscordClient, self)._request(
+            method, url, headers=headers, params=params, **aio_kwargs)
 
 
 class Flickr(OAuth1Client):
@@ -497,14 +493,13 @@ class LichessClient(OAuth2Client):
         yield 'last_name', data.get('profile').get("lastName")
         yield 'country', data.get('profile').get("country")
 
-    def request(self, method, url, headers=None, **aio_kwargs):
-        """Request OAuth2 resource."""
-        url = self._get_url(url)
-        headers = headers or {'Accept': 'application/json'}
-        if self.access_token:
-            headers['Authorization'] = "Bearer {}".format(self.access_token)
-
-        return self._request(method, url, headers=headers, **aio_kwargs)
+    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
+        """Setup Authorization Header.."""
+        access_token = params.pop(self.access_token_key, None)
+        if access_token:
+            headers['Authorization'] = "Bearer %s" % access_token
+        return super(LichessClient, self)._request(
+            method, url, headers=headers, params=params, **aio_kwargs)
 
 
 class Meetup(OAuth1Client):

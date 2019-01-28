@@ -1,6 +1,9 @@
-from aioauth_client import * # noqa
-import pytest
 import asyncio
+
+import mock
+import pytest
+
+from aioauth_client import * # noqa
 
 
 @pytest.fixture(scope='session')
@@ -50,9 +53,43 @@ def test_oauth2(loop):  # noqa
 
     assert github.get_authorize_url()
 
-    coro = github.get_access_token('000')
+    with mock.patch('aioauth_client.OAuth2Client._request') as mocked:
+        async def response():
+            return {'access_token': 'TEST-TOKEN'}
 
-    with pytest.raises(web.HTTPBadRequest):
-        loop.run_until_complete(coro)
+        mocked.return_value = response()
+        coro = github.get_access_token('000')
+        token, meta = loop.run_until_complete(coro)
+        assert mocked.called
+        assert token == 'TEST-TOKEN'
+        assert meta
+
+        mocked.reset_mock()
+        mocked.return_value = response()
+
+        coro = github.request('GET', 'user')
+        res = loop.run_until_complete(coro)
+        assert res
+        mocked.assert_called_with(
+            'GET', 'https://api.github.com/user',
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            }, params={'access_token': 'TEST-TOKEN'}
+        )
+
+        mocked.reset_mock()
+        mocked.return_value = response()
+
+        coro = github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
+        res = loop.run_until_complete(coro)
+        assert res
+        mocked.assert_called_with(
+            'GET', 'https://api.github.com/user',
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            }, params={'access_token': 'NEW-TEST-TOKEN'}
+        )
 
 # pylama:ignore=W0401,E711
