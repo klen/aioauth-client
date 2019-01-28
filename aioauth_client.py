@@ -847,13 +847,14 @@ class GoogleClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
-        yield 'id', data.get('sub') or data.get('id')
-        yield 'username', data.get('nickname')
-        yield 'first_name', data.get('name', {}).get('givenName')
-        yield 'last_name', data.get('name', {}).get('familyName')
-        yield 'locale', data.get('language')
-        yield 'link', data.get('url')
-        yield 'picture', data.get('image', {}).get('url')
+        yield 'id', data.get('id')
+        yield 'email', data.get('email')
+        yield 'first_name', data.get('given_name')
+        yield 'last_name', data.get('family_name')
+        yield 'link', data.get('link')
+        yield 'locale', data.get('locale')
+        yield 'picture', data.get('picture')
+        yield 'gender', data.get('gender')
 
 
 class VKClient(OAuth2Client):

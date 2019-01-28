@@ -1,3 +1,8 @@
+2019-01-28  klen
+
+	* Google+ Sign-In depricated. Aioauth uses Google UserInfo v2 from
+	now.
+
 2017-09-06  klen
 
 	* Support latest aiohttp
