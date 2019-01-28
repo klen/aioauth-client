@@ -318,19 +318,18 @@ class OAuth2Client(Client):
         :returns: (access_token, provider_data)
         """
         # Possibility to provide REQUEST DATA to the method
+        payload.setdefault('grant_type', 'authorization_code')
+        payload.update({'client_id': self.client_id, 'client_secret': self.client_secret})
+
         if not isinstance(code, str) and self.shared_key in code:
             code = code[self.shared_key]
-        payload.setdefault('grant_type', 'authorization_code')
-        payload.update({
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': code,
-        })
+        payload['refresh_token' if payload['grant_type'] == 'refresh_token' else 'code'] = code
 
         redirect_uri = redirect_uri or self.params.get('redirect_uri')
         if redirect_uri:
             payload['redirect_uri'] = redirect_uri
 
+        self.access_token = None
         data = await self.request('POST', self.access_token_url, data=payload, loop=loop)
 
         try:
