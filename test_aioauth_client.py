@@ -1,5 +1,6 @@
 import asyncio
 
+import aiohttp
 import mock
 import pytest
 
@@ -91,5 +92,30 @@ def test_oauth2(loop):  # noqa
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             }, params={'access_token': 'NEW-TEST-TOKEN'}
         )
+
+
+def test_custom_session(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    github = GithubClient(
+        client_id='b6281b6fe88fa4c313e6',
+        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
+        session=session
+    )
+    with mock.patch.object(session, '_request') as mocked:
+        async def response():
+            res = aiohttp.web.Response(headers={'Content-Type':  'json'})
+            res.release = lambda: True
+            async def coro():
+                return {'access_token': 'TOKEN'}
+            res.json = coro
+            return res
+        mocked.return_value = response()
+        coro = github.get_access_token('000')
+        token, meta = loop.run_until_complete(coro)
+        assert token
+        assert meta
+        assert mocked.called
+
+    loop.run_until_complete(session.close())
 
 # pylama:ignore=W0401,E711

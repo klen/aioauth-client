@@ -10,7 +10,6 @@ from random import SystemRandom
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
 import aiohttp
-import async_timeout
 import yarl
 from aiohttp import BasicAuth, web
 
@@ -116,13 +115,14 @@ class Client(object, metaclass=ClientRegistry):
     user_info_url = None
 
     def __init__(self, base_url=None, authorize_url=None, access_token_key=None,
-                 access_token_url=None, logger=None):
+                 access_token_url=None, session=None, logger=None):
         """Initialize the client."""
         self.base_url = base_url or self.base_url
         self.authorize_url = authorize_url or self.authorize_url
         self.access_token_key = access_token_key or self.access_token_key
         self.access_token_url = access_token_url or self.access_token_url
         self.logger = logger or logging.getLogger('OAuth: %s' % self.name)
+        self.session = session
 
     def _get_url(self, url):
         """Build provider's url. Join with base_url part if needed."""
@@ -140,24 +140,29 @@ class Client(object, metaclass=ClientRegistry):
 
     async def _request(self, method, url, loop=None, timeout=None, **kwargs):
         """Make a request through AIOHTTP."""
+        session = self.session or aiohttp.ClientSession(
+            loop=loop, conn_timeout=timeout, read_timeout=timeout)
         try:
-            async with async_timeout.timeout(timeout):
-                async with aiohttp.ClientSession(loop=loop) as session:
-                    async with session.request(method, url, **kwargs) as response:
+            async with session.request(method, url, **kwargs) as response:
 
-                        if response.status / 100 > 2:
-                            raise web.HTTPBadRequest(
-                                reason='HTTP status code: %s' % response.status)
+                if response.status / 100 > 2:
+                    raise web.HTTPBadRequest(
+                        reason='HTTP status code: %s' % response.status)
 
-                        if 'json' in response.headers.get('CONTENT-TYPE'):
-                            data = await response.json()
-                        else:
-                            data = await response.text()
-                            data = dict(parse_qsl(data))
+                if 'json' in response.headers.get('CONTENT-TYPE'):
+                    data = await response.json()
+                else:
+                    data = await response.text()
+                    data = dict(parse_qsl(data))
 
-                        return data
+                return data
+
         except asyncio.TimeoutError:
-            raise web.HTTPBadRequest(reason='HTTP timeout')
+            raise web.HTTPBadRequest(reason='HTTP Timeout')
+
+        finally:
+            if not self.session and not session.closed:
+                await session.close()
 
     def request(self, method, url, params=None, headers=None, loop=None,
                 **aio_kwargs):
@@ -192,12 +197,12 @@ class OAuth1Client(Client):
                  authorize_url=None,
                  oauth_token=None, oauth_token_secret=None,
                  request_token_url=None,
-                 access_token_url=None, access_token_key=None, logger=None,
+                 access_token_url=None, access_token_key=None, session=None, logger=None,
                  signature=None,
                  **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
-                         access_token_url, logger)
+                         access_token_url, session, logger)
 
         self.oauth_token = oauth_token
         self.oauth_token_secret = oauth_token_secret
@@ -281,11 +286,11 @@ class OAuth2Client(Client):
     def __init__(self, client_id, client_secret, base_url=None,
                  authorize_url=None,
                  access_token=None, access_token_url=None,
-                 access_token_key=None, logger=None,
+                 access_token_key=None, session=None, logger=None,
                  **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
-                         access_token_url, logger)
+                         access_token_url, session, logger)
 
         self.access_token = access_token
         self.client_id = client_id
