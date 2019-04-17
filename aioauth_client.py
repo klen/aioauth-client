@@ -311,6 +311,10 @@ class OAuth2Client(Client):
         access_token = access_token or self.access_token
         if access_token:
             if isinstance(params, list):
+                params = [
+                    (key, value) for key, value in params
+                    if key != self.access_token_key
+                ]
                 params.append((self.access_token_key, access_token))
             else:
                 params[self.access_token_key] = access_token
