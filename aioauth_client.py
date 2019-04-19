@@ -311,7 +311,9 @@ class OAuth2Client(Client):
         access_token = access_token or self.access_token
         if access_token:
             if isinstance(params, list):
-                params.append((self.access_token_key, access_token))
+                if self.access_token_key not in dict(params):
+                    params.append((self.access_token_key, access_token))
+
             else:
                 params[self.access_token_key] = access_token
 

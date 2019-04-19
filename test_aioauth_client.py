@@ -68,7 +68,7 @@ def test_oauth2(loop):  # noqa
         mocked.reset_mock()
         mocked.return_value = response()
 
-        coro = github.request('GET', 'user')
+        coro = github.request('GET', 'user', params=[('access_token', 'CUSTOM')])
         res = loop.run_until_complete(coro)
         assert res
         mocked.assert_called_with(
@@ -76,7 +76,7 @@ def test_oauth2(loop):  # noqa
             headers={
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-            }, params={'access_token': 'TEST-TOKEN'}
+            }, params=[('access_token', 'CUSTOM')]
         )
 
         mocked.reset_mock()
@@ -105,6 +105,7 @@ def test_custom_session(loop):
         async def response():
             res = aiohttp.web.Response(headers={'Content-Type':  'json'})
             res.release = lambda: True
+
             async def coro():
                 return {'access_token': 'TOKEN'}
             res.json = coro
