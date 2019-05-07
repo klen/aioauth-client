@@ -1008,4 +1008,29 @@ class PinterestClient(OAuth2Client):
         yield 'last_name', data.get('last_name')
         yield 'link', data.get('url')
 
+
+class InstagramClient(OAuth2Client):
+    """Support Instagram
+
+		* Dashboard: https://www.instagram.com/developer/clients/manage/
+		* Docs: https://www.instagram.com/developer/
+    """
+
+    access_token_url = 'https://api.instagram.com/oauth/access_token'
+    authorize_url = 'https://api.instagram.com/oauth/authorize'
+    base_url = 'https://api.instagram.com/v1'
+    name = 'instagram'
+    user_info_url = 'https://api.instagram.com/v1/users/self'
+
+    @staticmethod
+    def user_parse(data):
+        """Parse information from the provider."""
+        user = data.get('data')
+        yield 'id', user.get('id')
+        yield 'username', user.get('username')
+        yield 'picture', user.get('profile_picture')
+        first_name, _, last_name = user.get('full_name', '').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+
 # pylama:ignore=E501
