@@ -356,33 +356,6 @@ class OAuth2Client(Client):
         return self.access_token, data
 
 
-class BitbucketClient(OAuth1Client):
-    """Support Bitbucket.
-
-    * Dashboard: https://bitbucket.org/account/user/peterhudec/api
-    * Docs: https://confluence.atlassian.com/display/BITBUCKET/oauth+Endpoint
-    * API refer: https://confluence.atlassian.com/display/BITBUCKET/Using+the+Bitbucket+REST+APIs
-    """
-
-    access_token_url = 'https://bitbucket.org/!api/1.0/oauth/access_token'
-    authorize_url = 'https://bitbucket.org/!api/1.0/oauth/authenticate'
-    base_url = 'https://api.bitbucket.org/1.0/'
-    name = 'bitbucket'
-    request_token_url = 'https://bitbucket.org/!api/1.0/oauth/request_token'
-    user_info_url = 'https://api.bitbucket.org/1.0/user'
-
-    @staticmethod
-    def user_parse(data):
-        """Parse information from the provider."""
-        user_ = data.get('user')
-        yield 'id', user_.get('username')
-        yield 'username', user_.get('username')
-        yield 'first_name', user_.get('first_name')
-        yield 'last_name', user_.get('last_name')
-        yield 'picture', user_.get('avatar')
-        yield 'link', user_.get('resource_url')
-
-
 class Bitbucket2Client(OAuth2Client):
     """Support Bitbucket API 2.0.
 
@@ -410,7 +383,8 @@ class Bitbucket2Client(OAuth2Client):
     def _request(self, method, url, headers=None, params=None, **aio_kwargs):
         """Setup Authorization Header.."""
         auth = None
-        access_token = params.pop(self.access_token_key, None)
+        access_token = params.pop(self.access_token_key, self.access_token)
+        headers = headers or {}
         if access_token:
             headers['Authorization'] = "Bearer %s" % access_token
         else:
