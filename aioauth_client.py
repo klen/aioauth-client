@@ -861,7 +861,7 @@ class VKClient(OAuth2Client):
     def user_parse(data):
         """Parse information from provider."""
         resp = data.get('response', [{}])[0]
-        yield 'id', resp.get('uid')
+        yield 'id', resp.get('id')
         yield 'first_name', resp.get('first_name')
         yield 'last_name', resp.get('last_name')
         yield 'username', resp.get('nickname')
