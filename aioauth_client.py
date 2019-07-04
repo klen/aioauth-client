@@ -564,6 +564,7 @@ class TwitterClient(OAuth1Client):
         first_name, _, last_name = data['name'].partition(' ')
         yield 'first_name', first_name
         yield 'last_name', last_name
+        yield 'email', data.get('email')
         yield 'picture', data.get('profile_image_url')
         yield 'locale', data.get('lang')
         yield 'link', data.get('url')
