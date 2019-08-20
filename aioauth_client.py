@@ -473,9 +473,11 @@ class LichessClient(OAuth2Client):
         """Parse information from provider."""
         yield 'id', data.get('id')
         yield 'username', data.get('username')
-        yield 'first_name', data.get('profile').get("firstName")
-        yield 'last_name', data.get('profile').get("lastName")
-        yield 'country', data.get('profile').get("country")
+        profile = data.get('profile')
+        if profile is not None:
+            yield 'first_name', data.get('profile').get("firstName")
+            yield 'last_name', data.get('profile').get("lastName")
+            yield 'country', data.get('profile').get("country")
 
     def _request(self, method, url, headers=None, params=None, **aio_kwargs):
         """Setup Authorization Header.."""
