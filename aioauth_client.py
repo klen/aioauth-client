@@ -473,6 +473,7 @@ class LichessClient(OAuth2Client):
         """Parse information from provider."""
         yield 'id', data.get('id')
         yield 'username', data.get('username')
+        yield 'gender', data.get("title")
         profile = data.get('profile')
         if profile is not None:
             yield 'first_name', profile.get("firstName")
