@@ -141,19 +141,14 @@ class Client(object, metaclass=ClientRegistry):
     async def _request(self, method, url, loop=None, timeout=None, **kwargs):
         """Make a request through AIOHTTP."""
         session = self.session or aiohttp.ClientSession(
-            loop=loop, conn_timeout=timeout, read_timeout=timeout)
+            loop=loop, conn_timeout=timeout, read_timeout=timeout, raise_for_status=True)
         try:
             async with session.request(method, url, **kwargs) as response:
-
-                if response.status // 100 > 2:
-                    raise web.HTTPBadRequest(
-                        reason='HTTP status code: %s' % response.status)
-
                 if 'json' in response.headers.get('CONTENT-TYPE'):
                     data = await response.json()
                 else:
                     data = await response.text()
-                    data = dict(parse_qsl(data))
+                    data = dict(parse_qsl(data)) or data
 
                 return data
 

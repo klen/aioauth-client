@@ -19,3 +19,5 @@ Contributors
 * Peyman Mortazavi (https://github.com/peymanmortazavi)
 * Bajusz Tamás (https://github.com/gbtami)
 * sunghyun-lee (https://github.com/sunghyun-lee)
+* Bajusz Tamás (https://github.com/gbtami)
+* Dougal Matthews (https://github.com/d0ugal)
