@@ -1011,4 +1011,11 @@ class InstagramClient(OAuth2Client):
         yield 'first_name', first_name
         yield 'last_name', last_name
 
+
+class StravaClient(OAuth2Client):
+    access_token_url = 'https://www.strava.com/oauth/token'
+    authorize_url = 'http://www.strava.com/oauth/authorize'
+    base_url = 'https://www.strava.com/api/v3/'
+    name = 'strava'
+
 # pylama:ignore=E501
