@@ -6,7 +6,7 @@ from aiohttp import web
 import html
 from pprint import pformat
 from aioauth_client import (
-    BitbucketClient,
+    Bitbucket2Client,
     FacebookClient,
     GithubClient,
     GoogleClient,
@@ -56,10 +56,10 @@ clients = {
         },
     },
     'bitbucket': {
-        'class': BitbucketClient,
+        'class': Bitbucket2Client,
         'init': {
-            'consumer_key': '4DKzbyW8JSbnkFyRS5',
-            'consumer_secret': 'AvzZhtvRJhrEJMsGAMsPEuHTRWdMPX9z',
+            'client_id': '4DKzbyW8JSbnkFyRS5',
+            'client_secret': 'AvzZhtvRJhrEJMsGAMsPEuHTRWdMPX9z',
         },
     },
 }

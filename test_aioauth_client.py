@@ -68,20 +68,6 @@ def test_oauth2(loop):  # noqa
         mocked.reset_mock()
         mocked.return_value = response()
 
-        coro = github.request('GET', 'user', params=[('access_token', 'CUSTOM')])
-        res = loop.run_until_complete(coro)
-        assert res
-        mocked.assert_called_with(
-            'GET', 'https://api.github.com/user',
-            headers={
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-            }, params=[('access_token', 'CUSTOM')]
-        )
-
-        mocked.reset_mock()
-        mocked.return_value = response()
-
         coro = github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
         res = loop.run_until_complete(coro)
         assert res
@@ -89,8 +75,9 @@ def test_oauth2(loop):  # noqa
             'GET', 'https://api.github.com/user',
             headers={
                 'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-            }, params={'access_token': 'NEW-TEST-TOKEN'}
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'Authorization': 'Bearer NEW-TEST-TOKEN'
+            }
         )
 
 

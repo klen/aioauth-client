@@ -11,7 +11,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
 import aiohttp
 import yarl
-from aiohttp import BasicAuth, web
+from aiohttp import web
 
 
 __version__ = "0.18.0"
@@ -298,25 +298,18 @@ class OAuth2Client(Client):
         params.update({'client_id': self.client_id, 'response_type': 'code'})
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, headers=None, access_token=None, **aio_kwargs):
+    def request(self, method, url, headers=None, access_token=None, **aio_kwargs):
         """Request OAuth2 resource."""
         url = self._get_url(url)
-        params = params or {}
-
-        access_token = access_token or self.access_token
-        if access_token:
-            if isinstance(params, list):
-                if self.access_token_key not in dict(params):
-                    params.append((self.access_token_key, access_token))
-
-            else:
-                params[self.access_token_key] = access_token
-
         headers = headers or {
             'Accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         }
-        return self._request(method, url, params=params, headers=headers, **aio_kwargs)
+        access_token = access_token or self.access_token
+        if access_token:
+            headers.setdefault('Authorization', 'Bearer %s' % access_token)
+
+        return self._request(method, url, headers=headers, **aio_kwargs)
 
     async def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
         """Get an access_token from OAuth provider.
@@ -375,19 +368,6 @@ class Bitbucket2Client(OAuth2Client):
         yield 'picture', links.get('avatar', {}).get('href')
         yield 'link', links.get('html', {}).get('href')
 
-    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
-        """Setup Authorization Header.."""
-        auth = None
-        access_token = params.pop(self.access_token_key, self.access_token)
-        headers = headers or {}
-        if access_token:
-            headers['Authorization'] = "Bearer %s" % access_token
-        else:
-            auth = BasicAuth(self.client_id, self.client_secret)
-
-        return super(Bitbucket2Client, self)._request(
-            method, url, headers=headers, params=params, auth=auth, **aio_kwargs)
-
 
 class DiscordClient(OAuth2Client):
     """Support Discord API
@@ -411,14 +391,6 @@ class DiscordClient(OAuth2Client):
         yield 'discriminator', data.get('discriminator')
         yield 'picture', "https://cdn.discordapp.com/avatars/{}/{}.png".format(
             data.get('id'), data.get('avatar'))
-
-    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
-        """Setup Authorization Header.."""
-        access_token = params.pop(self.access_token_key, None)
-        if access_token:
-            headers['Authorization'] = "Bearer %s" % access_token
-        return super(DiscordClient, self)._request(
-            method, url, headers=headers, params=params, **aio_kwargs)
 
 
 class Flickr(OAuth1Client):
@@ -474,14 +446,6 @@ class LichessClient(OAuth2Client):
             yield 'first_name', profile.get("firstName")
             yield 'last_name', profile.get("lastName")
             yield 'country', profile.get("country")
-
-    def _request(self, method, url, headers=None, params=None, **aio_kwargs):
-        """Setup Authorization Header.."""
-        access_token = params.pop(self.access_token_key, None)
-        if access_token:
-            headers['Authorization'] = "Bearer %s" % access_token
-        return super(LichessClient, self)._request(
-            method, url, headers=headers, params=params, **aio_kwargs)
 
 
 class Meetup(OAuth1Client):
@@ -985,8 +949,8 @@ class PinterestClient(OAuth2Client):
 class InstagramClient(OAuth2Client):
     """Support Instagram
 
-		* Dashboard: https://www.instagram.com/developer/clients/manage/
-		* Docs: https://www.instagram.com/developer/
+        * Dashboard: https://www.instagram.com/developer/clients/manage/
+        * Docs: https://www.instagram.com/developer/
     """
 
     access_token_url = 'https://api.instagram.com/oauth/access_token'
