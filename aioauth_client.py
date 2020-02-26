@@ -145,7 +145,7 @@ class Client(object, metaclass=ClientRegistry):
         try:
             async with session.request(method, url, **kwargs) as response:
 
-                if response.status / 100 > 2:
+                if response.status // 100 > 2:
                     raise web.HTTPBadRequest(
                         reason='HTTP status code: %s' % response.status)
 
