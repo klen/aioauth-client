@@ -823,7 +823,10 @@ class VKClient(OAuth2Client):
     def request(self, method, url, access_token=None, params=None, **aio_kwargs):
         """VK supports access token only in query."""
         params = params or {}
-        params.setdefault('access_token', access_token)
+        access_token = access_token or self.access_token
+        if access_token:
+            params.setdefault('access_token', access_token)
+
         return super(VKClient, self).request(
             method, url, access_token=access_token, params=params, **aio_kwargs)
 
