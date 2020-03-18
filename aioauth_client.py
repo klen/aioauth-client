@@ -820,6 +820,13 @@ class VKClient(OAuth2Client):
         self.user_info_url = "{0}&v={1}".format(self.user_info_url, version)
         self.params.setdefault('scope', 'offline')
 
+    def request(self, method, url, access_token=None, params=None, **aio_kwargs):
+        """VK supports access token only in query."""
+        params = params or {}
+        params.setdefault('access_token', access_token)
+        return super(VKClient, self).request(
+            method, url, access_token=access_token, params=params, **aio_kwargs)
+
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
