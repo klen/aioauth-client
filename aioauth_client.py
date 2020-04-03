@@ -320,7 +320,7 @@ class OAuth2Client(Client):
         payload.setdefault('grant_type', 'authorization_code')
         payload.update({'client_id': self.client_id, 'client_secret': self.client_secret})
 
-        if not isinstance(code, str) and self.shared_key in code:
+        if code and not isinstance(code, str) and self.shared_key in code:
             code = code[self.shared_key]
         payload['refresh_token' if payload['grant_type'] == 'refresh_token' else 'code'] = code
 
@@ -780,7 +780,7 @@ class GoogleClient(OAuth2Client):
     """
 
     authorize_url = 'https://accounts.google.com/o/oauth2/v2/auth'
-    access_token_url = 'https://www.googleapis.com/oauth2/v4/token'
+    access_token_url = 'https://oauth2.googleapis.com/token'
     base_url = 'https://www.googleapis.com/userinfo/v2/'
     name = 'google'
     user_info_url = 'https://www.googleapis.com/userinfo/v2/me'
@@ -986,5 +986,28 @@ class StravaClient(OAuth2Client):
     authorize_url = 'http://www.strava.com/oauth/authorize'
     base_url = 'https://www.strava.com/api/v3/'
     name = 'strava'
+
+
+class SlackClient(OAuth2Client):
+    """Support Slack
+
+        * Dashboard: https://api.slack.com/apps
+        * Docs: https://api.slack.com/docs/oauth
+
+    """
+    access_token_url = 'https://slack.com/api/oauth.access'
+    authorize_url = 'https://slack.com/oauth/authorize'
+    user_info_url = 'https://slack.com/api/users.profile.get'
+    base_url = 'https://slack.com/api'
+    name = 'slack'
+
+    @staticmethod
+    def user_parse(data):
+        user = data.get('profile')
+        yield 'username', user.get('display_name') or user.get('real_name_normalized')
+        yield 'picture', user.get('image_72')
+        yield 'first_name', user.get('first_name')
+        yield 'last_name', user.get('last_name')
+        yield 'email', user.get('email')
 
 # pylama:ignore=E501
