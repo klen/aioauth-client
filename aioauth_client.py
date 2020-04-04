@@ -217,6 +217,7 @@ class OAuth1Client(Client):
     def get_authorize_url(self, request_token=None, **params):
         """Return formatted authorization URL."""
         params.update({'oauth_token': request_token or self.oauth_token})
+        params.update(self.params)
         return self.authorize_url + '?' + urlencode(params)
 
     def request(self, method, url, params=None, **aio_kwargs):
