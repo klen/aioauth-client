@@ -43,8 +43,9 @@ class Signature(object):
     @staticmethod
     def _escape(s):
         """URL escape a string."""
-        bs = s.encode('utf-8')
-        return quote(bs, '~').encode('utf-8')
+        #  bs = s.encode('utf-8')
+        #  return quote(bs, '~').encode('utf-8')
+        return quote(s, safe=b'~')
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None,
              **params):
@@ -57,23 +58,28 @@ class HmacSha1Signature(Signature):
 
     name = 'HMAC-SHA1'
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
-             **params):
+    def sign(self, consumer_secret, method, url, oauth_token_secret=None, escape=False, **params):
         """Create a signature using HMAC-SHA1."""
         # build the url the same way aiohttp will build the query later on
         # cf https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client.py#L151
         # and https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client_reqrep.py#L81
-        url = yarl.URL(url).with_query(sorted(params.items()))
-        url, params = str(url).split('?', 1)
-        method = method.upper()
 
-        signature = b"&".join(map(self._escape, (method, url, params)))
+        if escape:
+            params = [(self._escape(k), self._escape(v)) for k, v in params.items()]
+            params.sort()
+            params = '&'.join(['%s=%s' % item for item in params])
 
-        key = self._escape(consumer_secret) + b"&"
+        else:
+            url = yarl.URL(url).with_query(sorted(params.items()))
+            url, params = str(url).split('?', 1)
+
+        signature = "&".join(map(self._escape, (method.upper(), url, params)))
+
+        key = self._escape(consumer_secret) + "&"
         if oauth_token_secret:
             key += self._escape(oauth_token_secret)
 
-        hashed = hmac.new(key, signature, sha1)
+        hashed = hmac.new(key.encode(), signature.encode(), sha1)
         return base64.b64encode(hashed.digest()).decode()
 
 
@@ -85,10 +91,10 @@ class PlaintextSignature(Signature):
     def sign(self, consumer_secret, method, url, oauth_token_secret=None,
              **params):
         """Create a signature using PLAINTEXT."""
-        key = self._escape(consumer_secret) + b'&'
+        key = self._escape(consumer_secret) + '&'
         if oauth_token_secret:
             key += self._escape(oauth_token_secret)
-        return key.decode()
+        return key
 
 
 class ClientRegistry(type):
@@ -187,6 +193,7 @@ class OAuth1Client(Client):
     access_token_key = 'oauth_token'
     request_token_url = None
     version = '1.0'
+    escape = False
 
     def __init__(self, consumer_key, consumer_secret, base_url=None,
                  authorize_url=None,
@@ -235,7 +242,7 @@ class OAuth1Client(Client):
 
         oparams['oauth_signature'] = self.signature.sign(
             self.consumer_secret, method, url,
-            oauth_token_secret=self.oauth_token_secret, **oparams)
+            oauth_token_secret=self.oauth_token_secret, escape=self.escape, **oparams)
         self.logger.debug("%s %s", url, oparams)
 
         return self._request(method, url, params=oparams, **aio_kwargs)
@@ -1009,5 +1016,22 @@ class SlackClient(OAuth2Client):
         yield 'first_name', user.get('first_name')
         yield 'last_name', user.get('last_name')
         yield 'email', user.get('email')
+
+
+class TrelloClient(OAuth1Client):
+    """Support Twitter.
+
+    * Dashboard: https://trello.com/app-key
+    * Docs: https://developer.atlassian.com/cloud/trello/
+    """
+
+    access_token_url = 'https://trello.com/1/OAuthGetAccessToken'
+    authorize_url = 'https://trello.com/1/authorize'
+    base_url = 'https://api.trello.com/1/'
+    name = 'trello'
+    request_token_url = 'https://trello.com/1/OAuthGetRequestToken'
+    user_info_url = 'https://api.trello.com/1/members/me/'
+
+    escape = True
 
 # pylama:ignore=E501
