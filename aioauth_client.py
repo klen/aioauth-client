@@ -1010,4 +1010,17 @@ class SlackClient(OAuth2Client):
         yield 'last_name', user.get('last_name')
         yield 'email', user.get('email')
 
+
+class TodoistClient(OAuth2Client):
+    """Support Todoist
+
+        * Dashboard: https://developer.todoist.com/appconsole.html
+        * Docs: https://developer.todoist.com/sync/v8/
+
+    """
+    authorize_url = 'https://todoist.com/oauth/authorize'
+    access_token_url = 'https://todoist.com/oauth/access_token'
+    base_url = 'https://todoist.com/rest/v1'
+    name = 'todoist'
+
 # pylama:ignore=E501
