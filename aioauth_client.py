@@ -15,7 +15,7 @@ from aiohttp import web
 
 
 <<<<<<< HEAD
-__version__ = "0.20.0"
+__version__ = "0.20.1"
 ||||||| 24ef6b7
 __version__ = "0.19.0"
 =======
