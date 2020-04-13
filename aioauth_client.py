@@ -339,15 +339,12 @@ class OAuth2Client(Client):
         self.access_token = None
         data = await self.request('POST', self.access_token_url, data=payload, loop=loop)
 
-        try:
-            self.access_token = data['access_token']
-
-        except KeyError:
-            self.logger.error(
+        self.access_token = data.get('access_token')
+        if not self.access_token:
+            self.logger.warning(
                 'Error when getting the access token.\nData returned by OAuth server: %r',
                 data,
             )
-            raise web.HTTPBadRequest(reason='Failed to obtain OAuth access token.')
 
         return self.access_token, data
 
@@ -1003,8 +1000,8 @@ class SlackClient(OAuth2Client):
         * Docs: https://api.slack.com/docs/oauth
 
     """
-    access_token_url = 'https://slack.com/api/oauth.access'
-    authorize_url = 'https://slack.com/oauth/authorize'
+    access_token_url = 'https://slack.com/api/oauth.v2.access'
+    authorize_url = 'https://slack.com/oauth/v2/authorize'
     user_info_url = 'https://slack.com/api/users.profile.get'
     base_url = 'https://slack.com/api'
     name = 'slack'
