@@ -1030,7 +1030,7 @@ class TodoistClient(OAuth2Client):
 
 
 class TrelloClient(OAuth1Client):
-    """Support Twitter.
+    """Support Trello.
 
     * Dashboard: https://trello.com/app-key
     * Docs: https://developer.atlassian.com/cloud/trello/
@@ -1044,5 +1044,28 @@ class TrelloClient(OAuth1Client):
     user_info_url = 'https://api.trello.com/1/members/me/'
 
     escape = True
+
+
+class MicrosoftClient(OAuth2Client):
+    """Support Microsoft.
+
+    * Dashboard: https://portal.azure.com/
+    * Docs: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-app-types
+    """
+
+    access_token_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+    authorize_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+    base_url = 'https://graph.microsoft.com/beta'
+    name = 'microsoft'
+    user_info_url = 'https://graph.microsoft.com/beta/users/me'
+
+    @staticmethod
+    def user_parse(data):
+        yield 'id', data.get('id')
+        yield 'username', data.get('displayName')
+        yield 'first_name', data.get('givenName')
+        yield 'last_name', data.get('surname')
+        yield 'email', data.get('userPrincipalName')
+
 
 # pylama:ignore=E501
