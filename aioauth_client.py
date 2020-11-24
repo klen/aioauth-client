@@ -1025,8 +1025,28 @@ class TodoistClient(OAuth2Client):
     """
     authorize_url = 'https://todoist.com/oauth/authorize'
     access_token_url = 'https://todoist.com/oauth/access_token'
-    base_url = 'https://todoist.com/rest/v1'
+    user_info_url = 'https://api.todoist.com/sync/v8/sync'
+    base_url = 'https://api.todoist.com/rest/v1'
     name = 'todoist'
+
+    async def user_info(self, access_token=None, params=None, **kwargs):
+        params = params or {
+            'token': access_token or self.access_token,
+            'sync_token': '*',
+            'resource_types': '["user"]',
+        }
+        return await super(TodoistClient, self).user_info(params=params, **kwargs)
+
+    @staticmethod
+    def user_parse(data):
+        user = data.get('user')
+        yield 'id', user.get('id')
+        yield 'email', user.get('email')
+        first_name, _, last_name = user.get('full_name', '').partition(' ')
+        yield 'first_name', first_name
+        yield 'last_name', last_name
+        yield 'picture', user.get('avatar_big')
+        yield 'locale', user.get('lang')
 
 
 class TrelloClient(OAuth1Client):
