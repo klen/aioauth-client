@@ -257,7 +257,8 @@ class OAuth1Client(Client):
         self.oauth_token_secret = data.get('oauth_token_secret')
         return self.oauth_token, self.oauth_token_secret, data
 
-    async def get_access_token(self, oauth_verifier, request_token=None, loop=None, **params):
+    async def get_access_token(
+            self, oauth_verifier, request_token=None, headers=None, loop=None, **params):
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -271,7 +272,7 @@ class OAuth1Client(Client):
                 reason='Failed to obtain OAuth 1.0 access token. '
                        'Request token is invalid')
 
-        data = await self.request('POST', self.access_token_url, params={
+        data = await self.request('POST', self.access_token_url, headers=headers, params={
             'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
 
         self.oauth_token = data.get('oauth_token')
