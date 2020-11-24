@@ -14,7 +14,7 @@ import yarl
 from aiohttp import web
 
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
