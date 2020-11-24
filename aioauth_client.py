@@ -319,7 +319,7 @@ class OAuth2Client(Client):
 
         return self._request(method, url, headers=headers, **aio_kwargs)
 
-    async def get_access_token(self, code, loop=None, redirect_uri=None, **payload):
+    async def get_access_token(self, code, loop=None, redirect_uri=None, headers=None, **payload):
         """Get an access_token from OAuth provider.
 
         :returns: (access_token, provider_data)
@@ -337,7 +337,8 @@ class OAuth2Client(Client):
             payload['redirect_uri'] = redirect_uri
 
         self.access_token = None
-        data = await self.request('POST', self.access_token_url, data=payload, loop=loop)
+        data = await self.request(
+            'POST', self.access_token_url, data=payload, headers=headers, loop=loop)
 
         self.access_token = data.get('access_token')
         if not self.access_token:
@@ -375,7 +376,7 @@ class Bitbucket2Client(OAuth2Client):
 
 
 class DiscordClient(OAuth2Client):
-    """Support Discord API
+    """Support Discord API.
 
     * Dashboard: https://discordapp.com/developers/applications/me
     * Docs: https://discordapp.com/developers/docs/topics/oauth2
@@ -962,10 +963,10 @@ class PinterestClient(OAuth2Client):
 
 
 class InstagramClient(OAuth2Client):
-    """Support Instagram
+    """Support Instagram.
 
-        * Dashboard: https://www.instagram.com/developer/clients/manage/
-        * Docs: https://www.instagram.com/developer/
+    * Dashboard: https://www.instagram.com/developer/clients/manage/
+    * Docs: https://www.instagram.com/developer/
     """
 
     access_token_url = 'https://api.instagram.com/oauth/access_token'
@@ -987,6 +988,8 @@ class InstagramClient(OAuth2Client):
 
 
 class StravaClient(OAuth2Client):
+    """Support Strava."""
+
     access_token_url = 'https://www.strava.com/oauth/token'
     authorize_url = 'http://www.strava.com/oauth/authorize'
     base_url = 'https://www.strava.com/api/v3/'
@@ -994,12 +997,12 @@ class StravaClient(OAuth2Client):
 
 
 class SlackClient(OAuth2Client):
-    """Support Slack
+    """Support Slack.
 
-        * Dashboard: https://api.slack.com/apps
-        * Docs: https://api.slack.com/docs/oauth
-
+    * Dashboard: https://api.slack.com/apps
+    * Docs: https://api.slack.com/docs/oauth
     """
+
     access_token_url = 'https://slack.com/api/oauth.v2.access'
     authorize_url = 'https://slack.com/oauth/v2/authorize'
     user_info_url = 'https://slack.com/api/users.profile.get'
@@ -1008,6 +1011,7 @@ class SlackClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
+        """Convert Slack Response data to UserInfo."""
         user = data.get('profile')
         yield 'username', user.get('display_name') or user.get('real_name_normalized')
         yield 'picture', user.get('image_72')
@@ -1017,12 +1021,13 @@ class SlackClient(OAuth2Client):
 
 
 class TodoistClient(OAuth2Client):
-    """Support Todoist
+    """Support Todoist.
 
-        * Dashboard: https://developer.todoist.com/appconsole.html
-        * Docs: https://developer.todoist.com/sync/v8/
+    * Dashboard: https://developer.todoist.com/appconsole.html
+    * Docs: https://developer.todoist.com/sync/v8/
 
     """
+
     authorize_url = 'https://todoist.com/oauth/authorize'
     access_token_url = 'https://todoist.com/oauth/access_token'
     user_info_url = 'https://api.todoist.com/sync/v8/sync'
@@ -1030,6 +1035,7 @@ class TodoistClient(OAuth2Client):
     name = 'todoist'
 
     async def user_info(self, access_token=None, params=None, **kwargs):
+        """Load user data."""
         params = params or {
             'token': access_token or self.access_token,
             'sync_token': '*',
@@ -1039,6 +1045,7 @@ class TodoistClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
+        """Parse user data."""
         user = data.get('user')
         yield 'id', user.get('id')
         yield 'email', user.get('email')
@@ -1081,6 +1088,7 @@ class MicrosoftClient(OAuth2Client):
 
     @staticmethod
     def user_parse(data):
+        """Parse user data."""
         yield 'id', data.get('id')
         yield 'username', data.get('displayName')
         yield 'first_name', data.get('givenName')
