@@ -1,5 +1,5 @@
 -r requirements.txt
 -e .
 
-pytest==6.1.2
+pytest==6.2.1
 mock==2.0.0
