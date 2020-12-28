@@ -1,5 +1,5 @@
-AAuth Client
-############
+AIOAuth Client
+##############
 
 .. _description:
 
@@ -7,12 +7,12 @@ AIOAuth Client -- OAuth support for Asyncio/Trio libraries.
 
 .. _badges:
 
-.. image:: https://github.com/klen/asgi-tools/workflows/tests/badge.svg
-    :target: https://github.com/klen/asgi-tools/actions
+.. image:: https://github.com/klen/aioauth-client/workflows/tests/badge.svg
+    :target: https://github.com/klen/aioauth-client/actions
     :alt: Tests Status
 
-.. image:: https://img.shields.io/pypi/v/asgi-tools
-    :target: https://pypi.org/project/asgi-tools/
+.. image:: https://img.shields.io/pypi/v/aioauth-client
+    :target: https://pypi.org/project/aioauth-client/
     :alt: PYPI Version
 
 .. _contents:
