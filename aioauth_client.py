@@ -1083,9 +1083,9 @@ class MicrosoftClient(OAuth2Client):
 
     access_token_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
     authorize_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
-    base_url = 'https://graph.microsoft.com/beta'
+    base_url = 'https://graph.microsoft.com/v1.0'
     name = 'microsoft'
-    user_info_url = 'https://graph.microsoft.com/beta/users/me'
+    user_info_url = 'https://graph.microsoft.com/v1.0/me'
 
     @staticmethod
     def user_parse(data):

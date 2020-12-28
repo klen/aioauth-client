@@ -1,5 +1,3 @@
-VIRTUAL_ENV ?= env
-
 all: $(VIRTUAL_ENV)
 
 .PHONY: help
@@ -23,8 +21,8 @@ clean:
 VERSION?=minor
 # target: release - Bump version
 release: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install bumpversion
-	@$(VIRTUAL_ENV)/bin/bumpversion $(VERSION)
+	@$(VIRTUAL_ENV)/bin/pip install bump2version
+	@$(VIRTUAL_ENV)/bin/bump2version $(VERSION)
 	@git checkout master
 	@git merge develop
 	@git checkout develop
@@ -62,8 +60,9 @@ upload: clean
 #  Development
 # =============
 
+VIRTUAL_ENV ?= env
 $(VIRTUAL_ENV): requirements.txt
-	@[ -d $(VIRTUAL_ENV) ] || virtualenv $(VIRTUAL_ENV)
+	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
 	@touch $(VIRTUAL_ENV)
 
@@ -74,7 +73,7 @@ $(VIRTUAL_ENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
 .PHONY: t test
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)/bin/py.test
-	@$(VIRTUAL_ENV)/bin/py.test -xs test_aioauth_client.py
+	@$(VIRTUAL_ENV)/bin/py.test -xsv tests.py
 
 OPEN := $(shell command -v open 2> /dev/null)
 open:
