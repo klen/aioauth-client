@@ -1,7 +1,7 @@
-import asyncio
+import asyncio as aio
+from unittest import mock
 
-import aiohttp
-import mock
+import httpx
 import pytest
 
 from aioauth_client import * # noqa
@@ -9,7 +9,7 @@ from aioauth_client import * # noqa
 
 @pytest.fixture(scope='session')
 def loop():
-    return asyncio.get_event_loop()
+    return aio.get_event_loop()
 
 
 def test_userinfo_container():
@@ -55,10 +55,7 @@ def test_oauth2(loop):  # noqa
     assert github.get_authorize_url()
 
     with mock.patch('aioauth_client.OAuth2Client._request') as mocked:
-        async def response():
-            return {'access_token': 'TEST-TOKEN'}
-
-        mocked.return_value = response()
+        mocked.return_value = {'access_token': 'TEST-TOKEN'}
         coro = github.get_access_token('000')
         token, meta = loop.run_until_complete(coro)
         assert mocked.called
@@ -66,7 +63,7 @@ def test_oauth2(loop):  # noqa
         assert meta
 
         mocked.reset_mock()
-        mocked.return_value = response()
+        mocked.return_value = {'access_token': 'TEST-TOKEN'}
 
         coro = github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
         res = loop.run_until_complete(coro)
@@ -81,29 +78,24 @@ def test_oauth2(loop):  # noqa
         )
 
 
-def test_custom_session(loop):
-    session = aiohttp.ClientSession(loop=loop)
+def test_custom_client(loop):
+    transport = httpx.AsyncClient()
     github = GithubClient(
         client_id='b6281b6fe88fa4c313e6',
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
-        session=session
+        transport=transport,
     )
-    with mock.patch.object(session, '_request') as mocked:
-        async def response():
-            res = aiohttp.web.Response(headers={'Content-Type':  'json'})
-            res.release = lambda: True
+    assert github.transport
 
-            async def coro():
-                return {'access_token': 'TOKEN'}
-            res.json = coro
-            return res
-        mocked.return_value = response()
+    with mock.patch.object(transport, 'send') as mocked:
+        res = httpx.Response(200, headers={'Content-Type':  'json'})
+        res._text = '{"access_token": "TOKEN"}'
+        mocked.return_value = res
+
         coro = github.get_access_token('000')
         token, meta = loop.run_until_complete(coro)
         assert token
         assert meta
         assert mocked.called
-
-    loop.run_until_complete(session.close())
 
 # pylama:ignore=W0401,E711

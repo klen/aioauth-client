@@ -1,9 +1,9 @@
-AIOHTTP OAuth Client
-####################
+AAuth Client
+############
 
 .. _description:
 
-AIOHTTP OAuth Client -- OAuth support for Aiohttp/Asyncio.
+AIOAuth Client -- OAuth support for Asyncio/Trio libraries.
 
 .. _badges:
 
@@ -24,14 +24,14 @@ AIOHTTP OAuth Client -- OAuth support for Aiohttp/Asyncio.
 Requirements
 =============
 
-- python >= 3.5
+- python >= 3.8
 
 .. _installation:
 
 Installation
 =============
 
-**AIOHTTP OAuth Client** should be installed using pip: ::
+**AIOAuth Client** should be installed using pip: ::
 
     pip install aioauth-client
 
@@ -121,7 +121,7 @@ Example
 
 Run example with command: ::
 
-    make run
+    make example
 
 Open http://localhost:5000 in your browser.
 
@@ -139,7 +139,7 @@ at https://github.com/klen/aioauth-client/issues
 Contributing
 ============
 
-Development of AIOHTTP OAuth Client happens at: https://github.com/klen/aioauth-client
+Development of AIOAuth Client happens at: https://github.com/klen/aioauth-client
 
 .. _license:
 

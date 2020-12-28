@@ -1,6 +1,5 @@
-"""OAuth support for Aiohttp lib."""
+"""OAuth support for asyncio/trio libraries."""
 
-import asyncio
 import base64
 import hmac
 import logging
@@ -9,9 +8,9 @@ from hashlib import sha1
 from random import SystemRandom
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
-import aiohttp
+#  import aiohttp
+import httpx
 import yarl
-from aiohttp import web
 
 
 __version__ = "0.24.4"
@@ -21,6 +20,12 @@ __license__ = "MIT"
 
 
 RANDOM = SystemRandom().random
+
+
+class OAuthException(RuntimeError):
+    """AIOAuth Exceptions Class."""
+
+    pass
 
 
 class User:
@@ -60,10 +65,6 @@ class HmacSha1Signature(Signature):
 
     def sign(self, consumer_secret, method, url, oauth_token_secret=None, escape=False, **params):
         """Create a signature using HMAC-SHA1."""
-        # build the url the same way aiohttp will build the query later on
-        # cf https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client.py#L151
-        # and https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client_reqrep.py#L81
-
         if escape:
             params = [(self._escape(k), self._escape(v)) for k, v in params.items()]
             params.sort()
@@ -121,14 +122,14 @@ class Client(object, metaclass=ClientRegistry):
     user_info_url = None
 
     def __init__(self, base_url=None, authorize_url=None, access_token_key=None,
-                 access_token_url=None, session=None, logger=None):
+                 access_token_url=None, transport=None, logger=None):
         """Initialize the client."""
         self.base_url = base_url or self.base_url
         self.authorize_url = authorize_url or self.authorize_url
         self.access_token_key = access_token_key or self.access_token_key
         self.access_token_url = access_token_url or self.access_token_url
         self.logger = logger or logging.getLogger('OAuth: %s' % self.name)
-        self.session = session
+        self.transport = transport
 
     def _get_url(self, url):
         """Build provider's url. Join with base_url part if needed."""
@@ -144,39 +145,29 @@ class Client(object, metaclass=ClientRegistry):
         """String representation."""
         return "<%s>" % self
 
-    async def _request(self, method, url, loop=None, timeout=None, **kwargs):
-        """Make a request through AIOHTTP."""
-        session = self.session or aiohttp.ClientSession(
-            loop=loop, conn_timeout=timeout, read_timeout=timeout, raise_for_status=True)
-        try:
-            async with session.request(method, url, **kwargs) as response:
-                if 'json' in response.headers.get('CONTENT-TYPE'):
-                    data = await response.json()
-                else:
-                    data = await response.text()
-                    data = dict(parse_qsl(data)) or data
+    async def _request(self, method, url, **options):
+        """Make a request through HTTPX."""
+        transport = self.transport or httpx.AsyncClient()
+        async with transport as client:
+            response = await client.request(method, url, **options)
+            self.logger.warning("Request %s: %s %r", method, url, options)
+            if 'json' in response.headers.get('CONTENT-TYPE'):
+                return response.json()
 
-                return data
+            data = response.text()
+            return dict(parse_qsl(data)) or data
 
-        except asyncio.TimeoutError:
-            raise web.HTTPBadRequest(reason='HTTP Timeout')
-
-        finally:
-            if not self.session and not session.closed:
-                await session.close()
-
-    def request(self, method, url, params=None, headers=None, loop=None,
-                **aio_kwargs):
+    def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
-    async def user_info(self, loop=None, **kwargs):
+    async def user_info(self, **kwargs):
         """Load user information from provider."""
         if not self.user_info_url:
             raise NotImplementedError(
                 'The provider doesnt support user_info method.')
 
-        data = await self.request('GET', self.user_info_url, loop=loop, **kwargs)
+        data = await self.request('GET', self.user_info_url, **kwargs)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
@@ -199,12 +190,12 @@ class OAuth1Client(Client):
                  authorize_url=None,
                  oauth_token=None, oauth_token_secret=None,
                  request_token_url=None,
-                 access_token_url=None, access_token_key=None, session=None, logger=None,
+                 access_token_url=None, access_token_key=None, transport=None, logger=None,
                  signature=None,
                  **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
-                         access_token_url, session, logger)
+                         access_token_url, transport, logger)
 
         self.oauth_token = oauth_token
         self.oauth_token_secret = oauth_token_secret
@@ -248,17 +239,17 @@ class OAuth1Client(Client):
 
         return self._request(method, url, params=oparams, **aio_kwargs)
 
-    async def get_request_token(self, loop=None, **params):
+    async def get_request_token(self, **params):
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
-        data = await self.request('GET', self.request_token_url, params=params, loop=loop)
+        data = await self.request('GET', self.request_token_url, params=params)
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
         return self.oauth_token, self.oauth_token_secret, data
 
     async def get_access_token(
-            self, oauth_verifier, request_token=None, headers=None, loop=None, **params):
+            self, oauth_verifier, request_token=None, headers=None, **params):
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -268,12 +259,12 @@ class OAuth1Client(Client):
             oauth_verifier = oauth_verifier[self.shared_key]
 
         if request_token and self.oauth_token != request_token:
-            raise web.HTTPBadRequest(
-                reason='Failed to obtain OAuth 1.0 access token. '
-                       'Request token is invalid')
+            raise OAuthException(
+                'Failed to obtain OAuth 1.0 access token. '
+                'Request token is invalid')
 
         data = await self.request('POST', self.access_token_url, headers=headers, params={
-            'oauth_verifier': oauth_verifier, 'oauth_token': request_token}, loop=loop)
+            'oauth_verifier': oauth_verifier, 'oauth_token': request_token})
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -290,11 +281,11 @@ class OAuth2Client(Client):
     def __init__(self, client_id, client_secret, base_url=None,
                  authorize_url=None,
                  access_token=None, access_token_url=None,
-                 access_token_key=None, session=None, logger=None,
+                 access_token_key=None, transport=None, logger=None,
                  **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
-                         access_token_url, session, logger)
+                         access_token_url, transport, logger)
 
         self.access_token = access_token
         self.client_id = client_id
@@ -320,7 +311,7 @@ class OAuth2Client(Client):
 
         return self._request(method, url, headers=headers, **aio_kwargs)
 
-    async def get_access_token(self, code, loop=None, redirect_uri=None, headers=None, **payload):
+    async def get_access_token(self, code, redirect_uri=None, headers=None, **payload):
         """Get an access_token from OAuth provider.
 
         :returns: (access_token, provider_data)
@@ -339,7 +330,7 @@ class OAuth2Client(Client):
 
         self.access_token = None
         data = await self.request(
-            'POST', self.access_token_url, data=payload, headers=headers, loop=loop)
+            'POST', self.access_token_url, data=payload, headers=headers)
 
         self.access_token = data.get('access_token')
         if not self.access_token:

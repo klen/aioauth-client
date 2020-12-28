@@ -1,123 +1,70 @@
-""" Aioauth-client example. """
+"""Aioauth-client example.
 
-import asyncio
+Requirements:
+    aioauth-client
+    asgi-tools
+    uvicorn
 
-from aiohttp import web
+Run the example with uvicorn:
+
+    $ uvicorn app:app
+
+"""
+
+from asgi_tools import App, ResponseRedirect
 import html
 from pprint import pformat
-from aioauth_client import (
-    Bitbucket2Client,
-    FacebookClient,
-    GithubClient,
-    GoogleClient,
-    OAuth1Client,
-    TwitterClient,
-    YandexClient,
-)
+
+from .config import CREDENTIALS
+from aioauth_client import ClientRegistry, OAuth1Client, GithubClient
 
 
-app = web.Application()
-clients = {
-    'twitter': {
-        'class': TwitterClient,
-        'init': {
-            'consumer_key': 'oUXo1M7q1rlsPXm4ER3dWnMt8',
-            'consumer_secret': 'YWzEvXZJO9PI6f9w2FtwUJenMvy9SPLrHOvnNkVkc5LdYjKKup',
-        },
-    },
-    'github': {
-        'class': GithubClient,
-        'init': {
-            'client_id': 'b6281b6fe88fa4c313e6',
-            'client_secret': '21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
-        },
-    },
-    'google': {
-        'class': GoogleClient,
-        'init': {
-            'client_id': '150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com', # noqa
-            'client_secret': 'df3JwpfRf8RIBz-9avNW8Gx7',
-            'scope': 'email profile',
-        },
-    },
-    'yandex': {
-        'class': YandexClient,
-        'init': {
-            'client_id': 'e19388a76a824b3385f38beec67f98f1',
-            'client_secret': '1d2e6fdcc23b45849def6a34b43ac2d8',
-        },
-    },
-    'facebook': {
-        'class': FacebookClient,
-        'init': {
-            'client_id': '384739235070641',
-            'client_secret': '8e3374a4e1e91a2bd5b830a46208c15a',
-            'scope': 'email'
-        },
-    },
-    'bitbucket': {
-        'class': Bitbucket2Client,
-        'init': {
-            'client_id': '4DKzbyW8JSbnkFyRS5',
-            'client_secret': 'AvzZhtvRJhrEJMsGAMsPEuHTRWdMPX9z',
-        },
-    },
-}
+app = App()
 
 
-@asyncio.coroutine
+@app.route('/')
 def index(request):
-    return web.Response(text="""
-        <ul>
-            <li><a href="/oauth/bitbucket">Login with Bitbucket</a></li>
-            <li><a href="/oauth/facebook">Login with Facebook</a></li>
-            <li><a href="/oauth/github">Login with Github</a></li>
-            <li><a href="/oauth/google">Login with Google</a></li>
-            <li><a href="/oauth/twitter">Login with Twitter</a></li>
-        </ul>
-    """, content_type="text/html")
+    return """
+        <link rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+        <div class="container">
+            <header class="navbar navbar-dark" style="background-color: #7952b3">
+                <h2 class="navbar-brand">AIOAuth Client Example</h2>
+            </header>
+            <ul class="nav flex-column mt-5">
+                <li class="nav-item">
+                    <a class="nav-link" href="/oauth/bitbucket">Login with Bitbucket</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/oauth/facebook">Login with Facebook</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/oauth/github">Login with Github</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/oauth/google">Login with Google</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/oauth/twitter">Login with Twitter</a></li>
+            </ul>
+        </div>
+    """
 
 
-# Simple Github (OAuth2) example (not connected to app)
-@asyncio.coroutine
-def github(request):
-    github = GithubClient(
-        client_id='b6281b6fe88fa4c313e6',
-        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
-    )
-    if 'code' not in request.query:
-        return web.HTTPFound(github.get_authorize_url(scope='user:email'))
-
-    # Get access token
-    code = request.query['code']
-    token, _ = yield from github.get_access_token(code)
-    assert token
-
-    # Get a resource `https://api.github.com/user`
-    response = yield from github.request('GET', 'user')
-    body = yield from response.read()
-    return web.Response(body=body, content_type='application/json')
-
-
-@asyncio.coroutine
-def oauth(request):
-    provider = request.match_info.get('provider')
-    if provider not in clients:
-        raise web.HTTPNotFound(reason='Unknown provider')
+@app.route('/oauth/{provider}')
+async def oauth(request, provider=None, **kwargs):
+    if provider not in CREDENTIALS:
+        return 404, 'Unknown provider %s' % provider
 
     # Create OAuth1/2 client
-    Client = clients[provider]['class']
-    params = clients[provider]['init']
+    Client = ClientRegistry.clients[provider]
+    params = CREDENTIALS[provider]
     client = Client(**params)
     client.params['oauth_callback' if issubclass(Client, OAuth1Client) else 'redirect_uri'] = \
-        'http://%s%s' % (request.host, request.path)
+        str(request.url.with_query(''))
 
     # Check if is not redirect from provider
     if client.shared_key not in request.query:
 
         # For oauth1 we need more work
         if isinstance(client, OAuth1Client):
-            token, secret, _ = yield from client.get_request_token()
+            token, secret, _ = await client.get_request_token()
 
             # Dirty save a token_secret
             # Dont do it in production
@@ -125,43 +72,58 @@ def oauth(request):
             request.app.token = token
 
         # Redirect client to provider
-        return web.HTTPFound(client.get_authorize_url(access_type='offline'))
+        return ResponseRedirect(client.get_authorize_url(access_type='offline'))
 
     # For oauth1 we need more work
     if isinstance(client, OAuth1Client):
         client.oauth_token_secret = request.app.secret
         client.oauth_token = request.app.token
 
-    _, meta = yield from client.get_access_token(request.query)
-    user, info = yield from client.user_info()
-    text = (
-        "<a href='/'>back</a><br/><br/>"
-        "<ul>"
-        "<li>ID: {u.id}</li>"
-        "<li>Username: {u.username}</li>"
-        "<li>First, last name: {u.first_name}, {u.last_name}</li>"
-        "<li>Gender: {u.gender}</li>"
-        "<li>Email: {u.email}</li>"
-        "<li>Link: {u.link}</li>"
-        "<li>Picture: {u.picture}</li>"
-        "<li>Country, city: {u.country}, {u.city}</li>"
-        "</ul>"
-    ).format(u=user)
-    text += "<pre>%s</pre>" % html.escape(pformat(info))
-    text += "<pre>%s</pre>" % html.escape(pformat(meta))
-    return web.Response(text=text, content_type='text/html')
+    _, meta = await client.get_access_token(request.query)
+    user, info = await client.user_info()
+    text = f"""
+        <link rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+        <div class="container">
+            <header class="navbar navbar-dark" style="background-color: #7952b3">
+                <h2 class="navbar-brand">AIOAuth Client Example ({ client.name })</h2>
+            </header>
+            <a class="btn btn-primary mt-4" href='/'>Return back</a>
+            <table class="table mt-4">
+                <tr><td> ID </td><td> { user.id } </td></tr>
+                <tr><td> Username </td><td> { user.username } </td></tr>
+                <tr><td>First, last name</td><td>{ user.first_name }, { user.last_name }</td></tr>
+                <tr><td>Gender</td><td> { user.gender } </td></tr>
+                <tr><td>Email</td><td> { user.email } </td></tr>
+                <tr><td>Link</td><td> { user.link } </td></tr>
+                <tr><td>Picture</td><td> { user.picture } </td></tr>
+                <tr><td>Country, City</td><td> { user.country }, { user.city } </td></tr>
+            </table>
+            <h3 class="mt-4">Raw data</h3>
+            <pre>{ html.escape(pformat(info)) }</pre>
+            <pre>{ html.escape(pformat(meta)) }</pre>
+        <div>
+        """
+    return text
 
 
-app.router.add_route('GET', '/', index)
-app.router.add_route('GET', '/oauth/{provider}', oauth)
+# Simple Github (OAuth2) example (not connected to app)
+async def github(request):
+    github = GithubClient(
+        client_id='b6281b6fe88fa4c313e6',
+        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
+    )
+    if 'code' not in request.query:
+        return ResponseRedirect(github.get_authorize_url(scope='user:email'))
 
-loop = asyncio.get_event_loop()
-f = loop.create_server(app.make_handler(), '127.0.0.1', 5000)
-srv = loop.run_until_complete(f)
-print('serving on', srv.sockets[0].getsockname())
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
+    # Get access token
+    code = request.query['code']
+    token, _ = await github.get_access_token(code)
+    assert token
+
+    # Get a resource `https://api.github.com/user`
+    response = await github.request('GET', 'user')
+    return await response.read()
+
 
 # pylama:ignore=D

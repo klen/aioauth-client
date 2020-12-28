@@ -2,55 +2,60 @@
 enable Google+ API by visiting
 https://console.developers.google.com/apis/api/plus.googleapis.com/overview
 
-requirements:
-    aiodns
-    aiohttp
-    aiohttp_session
-    aiohttp_session[secure]
-    cchardet
-    cryptography
-
+Requirements:
     aioauth-client
+    asgi-tools
+    asgi-sessions
+    uvicorn
+
+Run the example with uvicorn:
+
+    $ uvicorn --port 5000 google_example:app
+
 """
 
-import aiohttp_session
+from asgi_tools import App, ResponseRedirect
+from asgi_sessions import SessionMiddleware
 from aioauth_client import GoogleClient
-from aiohttp import web
-from aiohttp_session import get_session
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
+
+from .config import CREDENTIALS
+
+
+app = App()
+app.middleware(SessionMiddleware.setup(secret_key='aioauth-client'))
 
 
 class cfg:
-    oauth_redirect_path = '/oauth'  # path of oauth callback in your app
-    redirect_uri = 'http://127.0.0.1:8000/oauth'  # define it in google api console
+    redirect_uri = 'http://localhost:5000/oauth/google'  # define it in google api console
 
     # client id and secret from google api console
-    client_id = "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com"
-    client_secret = "abcdEFGHijklMNOPqrstUVWX"
+    client_id = CREDENTIALS['google']['client_id']
+    client_secret = CREDENTIALS['google']['client_secret']
 
     # secret_key for session encryption
     # key must be 32 url-safe base64-encoded bytes
     secret_key = b'abcdefghijklmnopqrstuvwxyz123456'
 
 
+@app.route('/oauth/google')
 async def oauth(request):
     client = GoogleClient(
         client_id=cfg.client_id,
         client_secret=cfg.client_secret
     )
 
-    if 'code' not in request.GET:
-        return web.HTTPFound(client.get_authorize_url(
+    if 'code' not in request.query:
+        return ResponseRedirect(client.get_authorize_url(
             scope='email profile',
             redirect_uri=cfg.redirect_uri
         ))
+
     token, data = await client.get_access_token(
-        request.GET['code'],
+        request.query['code'],
         redirect_uri=cfg.redirect_uri
     )
-    session = await get_session(request)
-    session['token'] = token
-    return web.HTTPFound('/')
+    request.session['token'] = token
+    return ResponseRedirect('/')
 
 
 def login_required(fn):
@@ -60,47 +65,41 @@ def login_required(fn):
     """
 
     async def wrapped(request, **kwargs):
-        session = await get_session(request)
-
-        if 'token' not in session:
-            return web.HTTPFound(cfg.oauth_redirect_path)
+        if 'token' not in request.session:
+            return ResponseRedirect('/oauth/google')
 
         client = GoogleClient(
             client_id=cfg.client_id,
             client_secret=cfg.client_secret,
-            access_token=session['token']
+            access_token=request.session['token']
         )
 
         try:
             user, info = await client.user_info()
         except Exception:
-            return web.HTTPFound(cfg.oauth_redirect_path)
+            return ResponseRedirect(cfg.oauth_redirect_path)
 
         return await fn(request, user, **kwargs)
 
     return wrapped
 
 
+@app.route('/')
 @login_required
 async def index(request, user):
-    text = ("<ul>"
-            "<li>ID: %(id)s</li>"
-            "<li>Username: %(username)s</li>"
-            "<li>First, last name: %(first_name)s, %(last_name)s</li>"
-            "<li>Gender: %(gender)s</li>"
-            "<li>Email: %(email)s</li>"
-            "<li>Link: %(link)s</li>"
-            "<li>Picture: %(picture)s</li>"
-            "<li>Country, city: %(country)s, %(city)s</li>"
-            "</ul>") % user.__dict__
-    return web.Response(text=text, content_type='text/html')
-
-
-app = web.Application()
-app.router.add_get(cfg.oauth_redirect_path, oauth)
-app.router.add_get('/', index)
-
-if __name__ == '__main__':
-    aiohttp_session.setup(app,
-                          EncryptedCookieStorage(cfg.secret_key))
-    web.run_app(app, port=8000)
+    text = f"""
+        <link rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+        <div class="container">
+            <header class="navbar navbar-dark" style="background-color: #7952b3">
+                <h2 class="navbar-brand">AIOAuth Google Client Example</h2>
+            </header>
+            <table class="table mt-4">
+                <tr><td> ID </td><td> { user.id } </td></tr>
+                <tr><td>First, last name</td><td>{ user.first_name }, { user.last_name }</td></tr>
+                <tr><td>Email</td><td> { user.email } </td></tr>
+                <tr><td>Picture</td><td> { user.picture } </td></tr>
+            </table>
+        <div>
+        """
+    return text

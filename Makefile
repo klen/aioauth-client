@@ -66,14 +66,14 @@ $(VIRTUAL_ENV): requirements.txt
 	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
 	@touch $(VIRTUAL_ENV)
 
-$(VIRTUAL_ENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
+$(VIRTUAL_ENV)/bin/pytest: requirements-tests.txt $(VIRTUAL_ENV) 
 	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
 	@touch $(VIRTUAL_ENV)/bin/py.test
 
 .PHONY: t test
 # target: test - Runs tests
-t test: $(VIRTUAL_ENV)/bin/py.test
-	@$(VIRTUAL_ENV)/bin/py.test -xsv tests.py
+t test: $(VIRTUAL_ENV)/bin/pytest
+	@$(VIRTUAL_ENV)/bin/pytest -xsv tests.py
 
 OPEN := $(shell command -v open 2> /dev/null)
 open:
@@ -82,10 +82,10 @@ ifdef OPEN
 	open http://localhost:5000
 endif
 
-server: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/python example/app.py
+server: $(VIRTUAL_ENV)/bin/pytest
+	@$(VIRTUAL_ENV)/bin/uvicorn --reload --port 5000 example.app:app
 
-.PHONY: run
-run:
+.PHONY: example
+example:
 	make -j server open
 
