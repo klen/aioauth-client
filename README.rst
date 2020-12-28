@@ -7,15 +7,13 @@ AIOHTTP OAuth Client -- OAuth support for Aiohttp/Asyncio.
 
 .. _badges:
 
-.. image:: http://img.shields.io/travis/klen/aioauth-client.svg?style=flat-square
-    :target: http://travis-ci.org/klen/aioauth-client
-    :alt: Build Status
+.. image:: https://github.com/klen/asgi-tools/workflows/tests/badge.svg
+    :target: https://github.com/klen/asgi-tools/actions
+    :alt: Tests Status
 
-.. image:: http://img.shields.io/pypi/v/aioauth-client.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/aioauth-client
-
-.. image:: http://img.shields.io/pypi/dm/aioauth-client.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/aioauth-client
+.. image:: https://img.shields.io/pypi/v/asgi-tools
+    :target: https://pypi.org/project/asgi-tools/
+    :alt: PYPI Version
 
 .. _contents:
 
@@ -53,7 +51,7 @@ Usage
         consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
     )
 
-    request_token, request_token_secret, _ = yield from twitter.get_request_token()
+    request_token, request_token_secret, _ = await twitter.get_request_token()
 
     authorize_url = twitter.get_authorize_url(request_token)
     print("Open",authorize_url,"in a browser")
@@ -62,7 +60,7 @@ Usage
     # ...
     print("PIN code:")
     oauth_verifier = input()
-    oauth_token, oauth_token_secret, _ = yield from twitter.get_access_token(oauth_verifier)
+    oauth_token, oauth_token_secret, _ = await twitter.get_access_token(oauth_verifier)
 
     # Save the tokens for later use
 
@@ -79,8 +77,8 @@ Usage
     # twitter.access_token = oauth_token
     # twitter.access_token_secret = oauth_token_secret
 
-    timeline = yield from twitter.request('GET', 'statuses/home_timeline.json')
-    content = yield from timeline.read()
+    timeline = await twitter.request('GET', 'statuses/home_timeline.json')
+    content = await timeline.read()
     print(content)
 
 .. code:: python
@@ -99,7 +97,7 @@ Usage
     # Reload client to authorize_url and get code
     # ...
 
-    otoken, _ = yield from github.get_access_token(code)
+    otoken, _ = await github.get_access_token(code)
 
     # Save the token for later use
 
@@ -114,8 +112,8 @@ Usage
     # Or you can use this if you have initilized client already
     # github.access_token = otoken
 
-    response = yield from github.request('GET', 'user')
-    user_info = yield from response.json()
+    response = await github.request('GET', 'user')
+    user_info = await response.json()
 
 
 Example
