@@ -150,7 +150,7 @@ class Client(object, metaclass=ClientRegistry):
         transport = self.transport or httpx.AsyncClient()
         async with transport as client:
             response = await client.request(method, url, **options)
-            self.logger.warning("Request %s: %s %r", method, url, options)
+            self.logger.debug("Request %s: %s %r", method, url, options)
             if 'json' in response.headers.get('CONTENT-TYPE'):
                 return response.json()
 
