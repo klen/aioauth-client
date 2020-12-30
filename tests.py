@@ -43,6 +43,14 @@ def test_oauth1(loop):  # noqa
         loop.run_until_complete(coro)
 
 
+def test_client(loop):
+    with mock.patch('httpx.AsyncClient.request') as mocked:
+        mocked.return_value = httpx.Response(200, text="test=passed")
+        google = GoogleClient(client_id='123', client_secret='456', access_token='789')
+        data = loop.run_until_complete(google.request('GET', '/'))
+        assert data == {'test': 'passed'}
+
+
 def test_oauth2(loop):  # noqa
     github = GithubClient(
         client_id='b6281b6fe88fa4c313e6',

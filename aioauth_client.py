@@ -154,8 +154,7 @@ class Client(object, metaclass=ClientRegistry):
             if 'json' in response.headers.get('CONTENT-TYPE'):
                 return response.json()
 
-            data = response.text()
-            return dict(parse_qsl(data)) or data
+            return dict(parse_qsl(response.text)) or response.text
 
     def request(self, method, url, params=None, headers=None, **aio_kwargs):
         """Make a request to provider."""
