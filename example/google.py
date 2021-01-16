@@ -10,7 +10,7 @@ Requirements:
 
 Run the example with uvicorn:
 
-    $ uvicorn --port 5000 google_example:app
+    $ uvicorn --port 5000 example.google_example:app
 
 """
 

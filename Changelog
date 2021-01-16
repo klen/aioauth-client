@@ -1,3 +1,7 @@
+2021-01-17  klen
+
+	* Trio support (drop aiohttp dependency)
+
 2019-01-28  klen
 
 	* Google+ Sign-In depricated. Aioauth uses Google UserInfo v2 from

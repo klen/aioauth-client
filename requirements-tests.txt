@@ -2,9 +2,11 @@
 -e .
 
 # To run example
-asgi-tools      >= 0.1.4
-asgi-sessions   >= 0.2.1
+asgi-tools      >= 0.16
+asgi-sessions   >= 0.3
 uvicorn         >= 0.13.2
 
 # To run tests
 pytest          >= 6.1.2
+trio
+anyio

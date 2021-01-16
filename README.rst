@@ -3,7 +3,7 @@ AIOAuth Client
 
 .. _description:
 
-AIOAuth Client -- OAuth support for Asyncio/Trio libraries.
+AIOAuth Client -- OAuth support for Asyncio_ / Trio_ libraries.
 
 .. _badges:
 
@@ -151,5 +151,7 @@ Licensed under a `MIT license`_.
 .. _links:
 
 .. _klen: https://github.com/klen
+.. _Asyncio: https://docs.python.org/3/library/asyncio.html
+.. _Trio: https://trio.readthedocs.io/en/stable/
 
 .. _MIT license: http://opensource.org/licenses/MIT

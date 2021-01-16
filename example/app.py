@@ -7,7 +7,7 @@ Requirements:
 
 Run the example with uvicorn:
 
-    $ uvicorn app:app
+    $ uvicorn --port 5000 example.app:app
 
 """
 
@@ -23,7 +23,7 @@ app = App()
 
 
 @app.route('/')
-def index(request):
+async def index(request):
     return """
         <link rel="stylesheet"
             href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
@@ -48,7 +48,8 @@ def index(request):
 
 
 @app.route('/oauth/{provider}')
-async def oauth(request, provider=None, **kwargs):
+async def oauth(request):
+    provider = request.path_params.get('provider')
     if provider not in CREDENTIALS:
         return 404, 'Unknown provider %s' % provider
 

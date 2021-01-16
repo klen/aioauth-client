@@ -1,4 +1,3 @@
-import asyncio as aio
 from unittest import mock
 
 import httpx
@@ -7,9 +6,12 @@ import pytest
 from aioauth_client import * # noqa
 
 
-@pytest.fixture(scope='session')
-def loop():
-    return aio.get_event_loop()
+@pytest.fixture(params=[
+    pytest.param('asyncio'),
+    pytest.param('trio'),
+], autouse=True)
+def anyio_backend(request):
+    return request.param
 
 
 def test_userinfo_container():
@@ -43,15 +45,15 @@ def test_oauth1(loop):  # noqa
         loop.run_until_complete(coro)
 
 
-def test_client(loop):
+async def test_client():
     with mock.patch('httpx.AsyncClient.request') as mocked:
         mocked.return_value = httpx.Response(200, text="test=passed")
         google = GoogleClient(client_id='123', client_secret='456', access_token='789')
-        data = loop.run_until_complete(google.request('GET', '/'))
+        data = await google.request('GET', '/')
         assert data == {'test': 'passed'}
 
 
-def test_oauth2(loop):  # noqa
+async def test_oauth2():  # noqa
     github = GithubClient(
         client_id='b6281b6fe88fa4c313e6',
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
@@ -64,8 +66,7 @@ def test_oauth2(loop):  # noqa
 
     with mock.patch('aioauth_client.OAuth2Client._request') as mocked:
         mocked.return_value = {'access_token': 'TEST-TOKEN'}
-        coro = github.get_access_token('000')
-        token, meta = loop.run_until_complete(coro)
+        token, meta = await github.get_access_token('000')
         assert mocked.called
         assert token == 'TEST-TOKEN'
         assert meta
@@ -73,8 +74,7 @@ def test_oauth2(loop):  # noqa
         mocked.reset_mock()
         mocked.return_value = {'access_token': 'TEST-TOKEN'}
 
-        coro = github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
-        res = loop.run_until_complete(coro)
+        res = await github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
         assert res
         mocked.assert_called_with(
             'GET', 'https://api.github.com/user',
@@ -86,7 +86,7 @@ def test_oauth2(loop):  # noqa
         )
 
 
-def test_custom_client(loop):
+async def test_custom_client():
     transport = httpx.AsyncClient()
     github = GithubClient(
         client_id='b6281b6fe88fa4c313e6',
@@ -100,8 +100,7 @@ def test_custom_client(loop):
         res._text = '{"access_token": "TOKEN"}'
         mocked.return_value = res
 
-        coro = github.get_access_token('000')
-        token, meta = loop.run_until_complete(coro)
+        token, meta = await github.get_access_token('000')
         assert token
         assert meta
         assert mocked.called
