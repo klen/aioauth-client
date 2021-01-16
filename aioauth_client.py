@@ -13,7 +13,7 @@ import httpx
 import yarl
 
 
-__version__ = "0.25.3"
+__version__ = "0.25.4"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
