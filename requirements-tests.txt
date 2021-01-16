@@ -9,4 +9,4 @@ uvicorn         >= 0.13.2
 # To run tests
 pytest          >= 6.1.2
 trio
-anyio
+anyio==2.0.2
