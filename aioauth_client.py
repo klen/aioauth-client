@@ -16,7 +16,7 @@ import httpx
 import yarl
 
 
-__version__ = "0.25.4"
+__version__ = "0.25.5"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
