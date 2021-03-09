@@ -22,17 +22,17 @@ jobs:
     - name: Checkout changes
       uses: actions/checkout@v2
 
-    - name: Set up Python 3.8
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        python-version: ${{ matrix.python-version }}
 
     - name: Use cache
       id: cache-env
       uses: actions/cache@v2
       with:
         path: env
-        key: ${{ runner.os }}-env-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-tests.txt') }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements-tests.txt') }}
 
     - name: Setup requirements
       run: |
