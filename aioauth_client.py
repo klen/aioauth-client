@@ -1,5 +1,8 @@
 """OAuth support for asyncio/trio libraries."""
 
+from __future__ import annotations
+
+import typing as t
 import base64
 import hmac
 import logging
@@ -43,16 +46,16 @@ class User:
 class Signature(object):
     """Abstract base class for signature methods."""
 
-    name = None
+    name: str = ''
 
     @staticmethod
-    def _escape(s):
+    def _escape(s: str) -> str:
         """URL escape a string."""
         #  bs = s.encode('utf-8')
         #  return quote(bs, '~').encode('utf-8')
         return quote(s, safe=b'~')
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
+    def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
              **params):
         """Abstract method."""
         raise NotImplementedError('Shouldnt be called.')
@@ -63,18 +66,18 @@ class HmacSha1Signature(Signature):
 
     name = 'HMAC-SHA1'
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None, escape=False, **params):
+    def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
+             escape: bool = False, **params) -> str:
         """Create a signature using HMAC-SHA1."""
         if escape:
-            params = [(self._escape(k), self._escape(v)) for k, v in params.items()]
-            params.sort()
-            params = '&'.join(['%s=%s' % item for item in params])
+            query = '&'.join(["%s=%s" % item for item in sorted([
+                (self._escape(k), self._escape(v)) for k, v in params.items()
+            ])])
 
         else:
-            url = yarl.URL(url).with_query(sorted(params.items()))
-            url, params = str(url).split('?', 1)
+            url, query = str(yarl.URL(url).with_query(sorted(params.items()))).split('?', 1)
 
-        signature = "&".join(map(self._escape, (method.upper(), url, params)))
+        signature = "&".join(map(self._escape, (method.upper(), url, query)))
 
         key = self._escape(consumer_secret) + "&"
         if oauth_token_secret:
@@ -89,8 +92,8 @@ class PlaintextSignature(Signature):
 
     name = 'PLAINTEXT'
 
-    def sign(self, consumer_secret, method, url, oauth_token_secret=None,
-             **params):
+    def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
+             **params) -> str:
         """Create a signature using PLAINTEXT."""
         key = self._escape(consumer_secret) + '&'
         if oauth_token_secret:
@@ -101,7 +104,7 @@ class PlaintextSignature(Signature):
 class ClientRegistry(type):
     """Meta class to register OAUTH clients."""
 
-    clients = {}
+    clients: t.Dict[str, t.Type[Client]] = {}
 
     def __new__(mcs, name, bases, params):
         """Save created client in self registry."""
@@ -113,16 +116,17 @@ class ClientRegistry(type):
 class Client(object, metaclass=ClientRegistry):
     """Base abstract OAuth Client class."""
 
-    access_token_key = 'access_token'
-    shared_key = 'oauth_verifier'
-    access_token_url = None
-    authorize_url = None
-    base_url = None
-    name = None
-    user_info_url = None
+    name: str = ''
+    base_url: str = ''
+    user_info_url: str = ''
+    access_token_key: str = 'access_token'
+    shared_key: str = 'oauth_verifier'
+    access_token_url: str = ''
+    authorize_url: str = ''
 
-    def __init__(self, base_url=None, authorize_url=None, access_token_key=None,
-                 access_token_url=None, transport=None, logger=None):
+    def __init__(self, base_url: str = None, authorize_url: str = None,
+                 access_token_key: str = None, access_token_url: str = None,
+                 transport: httpx.AsyncClient = None, logger: logging.Logger = None):
         """Initialize the client."""
         self.base_url = base_url or self.base_url
         self.authorize_url = authorize_url or self.authorize_url
@@ -131,21 +135,21 @@ class Client(object, metaclass=ClientRegistry):
         self.logger = logger or logging.getLogger('OAuth: %s' % self.name)
         self.transport = transport
 
-    def _get_url(self, url):
+    def _get_url(self, url: str) -> str:
         """Build provider's url. Join with base_url part if needed."""
         if self.base_url and not url.startswith(('http://', 'https://')):
             return urljoin(self.base_url, url)
         return url
 
-    def __str__(self):
+    def __str__(self) -> str:
         """String representation."""
-        return "%s %s" % (self.name.title(), self.base_url)
+        return f"{ self.name.title() } {self.base_url}"
 
     def __repr__(self):
         """String representation."""
-        return "<%s>" % self
+        return f"<{self}>"
 
-    async def _request(self, method, url, **options):
+    async def _request(self, method: str, url: str, **options) -> t.Union[t.Dict, str]:
         """Make a request through HTTPX."""
         transport = self.transport or httpx.AsyncClient()
         async with transport as client:
@@ -156,22 +160,23 @@ class Client(object, metaclass=ClientRegistry):
 
             return dict(parse_qsl(response.text)) or response.text
 
-    def request(self, method, url, params=None, headers=None, **aio_kwargs):
+    def request(self, method: str, url: str, params: t.Dict = None,
+                headers: t.Dict = None, **options):
         """Make a request to provider."""
         raise NotImplementedError('Shouldnt be called.')
 
-    async def user_info(self, **kwargs):
+    async def user_info(self, **options) -> t.Tuple[User, t.Any]:
         """Load user information from provider."""
         if not self.user_info_url:
             raise NotImplementedError(
                 'The provider doesnt support user_info method.')
 
-        data = await self.request('GET', self.user_info_url, **kwargs)
+        data = await self.request('GET', self.user_info_url, **options)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data) -> t.Generator[t.Tuple[str, t.Any], None, None]:
         """Parse user's information from given provider data."""
         yield 'id', None
 
@@ -181,17 +186,16 @@ class OAuth1Client(Client):
 
     name = 'oauth1'
     access_token_key = 'oauth_token'
-    request_token_url = None
     version = '1.0'
     escape = False
+    request_token_url: str = ''
 
-    def __init__(self, consumer_key, consumer_secret, base_url=None,
-                 authorize_url=None,
-                 oauth_token=None, oauth_token_secret=None,
-                 request_token_url=None,
-                 access_token_url=None, access_token_key=None, transport=None, logger=None,
-                 signature=None,
-                 **params):
+    def __init__(self, consumer_key: str, consumer_secret: str, base_url: str = None,
+                 authorize_url: str = None, oauth_token: str = None,
+                 oauth_token_secret: str = None, request_token_url: str = None,
+                 access_token_url: str = None, access_token_key: str = None,
+                 transport: httpx.AsyncClient = None, logger: logging.Logger = None,
+                 signature: Signature = None, **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
                          access_token_url, transport, logger)
@@ -204,13 +208,14 @@ class OAuth1Client(Client):
         self.params = params
         self.signature = signature or HmacSha1Signature()
 
-    def get_authorize_url(self, request_token=None, **params):
+    def get_authorize_url(self, request_token: str = None, **params) -> str:
         """Return formatted authorization URL."""
         params.update({'oauth_token': request_token or self.oauth_token})
         params.update(self.params)
         return self.authorize_url + '?' + urlencode(params)
 
-    def request(self, method, url, params=None, **aio_kwargs):
+    def request(self, method: str, url: str, params: t.Dict = None,
+                headers: t.Dict = None, **options) -> t.Awaitable[t.Union[t.Dict, str]]:
         """Make a request to provider."""
         oparams = {
             'oauth_consumer_key': self.consumer_key,
@@ -236,16 +241,18 @@ class OAuth1Client(Client):
             oauth_token_secret=self.oauth_token_secret, escape=self.escape, **oparams)
         self.logger.debug("%s %s", url, oparams)
 
-        return self._request(method, url, params=oparams, **aio_kwargs)
+        return self._request(method, url, params=oparams, headers=headers, **options)
 
-    async def get_request_token(self, **params):
+    async def get_request_token(self, **params) -> t.Tuple[str, str, t.Any]:
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
         data = await self.request('GET', self.request_token_url, params=params)
+        if not isinstance(data, dict):
+            return '', '', data
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
-        return self.oauth_token, self.oauth_token_secret, data
+        return self.oauth_token, self.oauth_token_secret, data  # type: ignore
 
     async def get_access_token(
             self, oauth_verifier, request_token=None, headers=None, **params):
@@ -277,11 +284,10 @@ class OAuth2Client(Client):
     name = 'oauth2'
     shared_key = 'code'
 
-    def __init__(self, client_id, client_secret, base_url=None,
-                 authorize_url=None,
-                 access_token=None, access_token_url=None,
-                 access_token_key=None, transport=None, logger=None,
-                 **params):
+    def __init__(self, client_id: str, client_secret: str, base_url: str = None,
+                 authorize_url: str = None, access_token: str = None, access_token_url: str = None,
+                 access_token_key: str = None, transport: httpx.AsyncClient = None,
+                 logger: logging.Logger = None, **params):
         """Initialize the client."""
         super().__init__(base_url, authorize_url, access_token_key,
                          access_token_url, transport, logger)
@@ -291,13 +297,14 @@ class OAuth2Client(Client):
         self.client_secret = client_secret
         self.params = params
 
-    def get_authorize_url(self, **params):
+    def get_authorize_url(self, **params) -> str:
         """Return formatted authorize URL."""
         params = dict(self.params, **params)
         params.update({'client_id': self.client_id, 'response_type': 'code'})
-        return self.authorize_url + '?' + urlencode(params)
+        return f"{ self.authorize_url }?{ urlencode(params) }"
 
-    def request(self, method, url, headers=None, access_token=None, **aio_kwargs):
+    def request(self, method: str, url: str, params: t.Dict = None, headers: t.Dict = None,
+                access_token: str = None, **options) -> t.Awaitable[t.Union[t.Dict, str]]:
         """Request OAuth2 resource."""
         url = self._get_url(url)
         headers = headers or {
@@ -308,9 +315,10 @@ class OAuth2Client(Client):
         if access_token:
             headers.setdefault('Authorization', 'Bearer %s' % access_token)
 
-        return self._request(method, url, headers=headers, **aio_kwargs)
+        return self._request(method, url, headers=headers, **options)
 
-    async def get_access_token(self, code, redirect_uri=None, headers=None, **payload):
+    async def get_access_token(self, code: str, redirect_uri: str = None,
+                               headers: t.Dict = None, **payload) -> t.Tuple[str, t.Any]:
         """Get an access_token from OAuth provider.
 
         :returns: (access_token, provider_data)
@@ -331,6 +339,9 @@ class OAuth2Client(Client):
         data = await self.request(
             'POST', self.access_token_url, data=payload, headers=headers)
 
+        if not isinstance(data, dict):
+            return '', data
+
         self.access_token = data.get('access_token')
         if not self.access_token:
             self.logger.warning(
@@ -338,7 +349,7 @@ class OAuth2Client(Client):
                 data,
             )
 
-        return self.access_token, data
+        return self.access_token, data  # type: ignore
 
 
 class Bitbucket2Client(OAuth2Client):

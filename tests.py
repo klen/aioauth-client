@@ -10,7 +10,7 @@ from aioauth_client import * # noqa
     pytest.param('asyncio'),
     pytest.param('trio'),
 ], autouse=True)
-def anyio_backend(request):
+def aiolib(request):
     return request.param
 
 

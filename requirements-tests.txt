@@ -1,12 +1,11 @@
--r requirements.txt
 -e .
 
 # To run example
-asgi-tools      >= 0.16
-asgi-sessions   >= 0.3
-uvicorn         >= 0.13.2
+asgi-tools      >= 0.41.1
+asgi-sessions   >= 0.8.1
+uvicorn         >= 0.13.4
 
 # To run tests
 pytest          >= 6.1.2
-trio
-anyio
+pytest-aio[trio]
+pytest-mypy

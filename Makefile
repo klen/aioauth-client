@@ -61,9 +61,9 @@ upload: clean
 # =============
 
 VIRTUAL_ENV ?= env
-$(VIRTUAL_ENV): requirements.txt
+$(VIRTUAL_ENV): setup.cfg
 	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
+	@$(VIRTUAL_ENV)/bin/pip install -e .[build]
 	@touch $(VIRTUAL_ENV)
 
 $(VIRTUAL_ENV)/bin/pytest: requirements-tests.txt $(VIRTUAL_ENV) 
@@ -74,6 +74,10 @@ $(VIRTUAL_ENV)/bin/pytest: requirements-tests.txt $(VIRTUAL_ENV)
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)/bin/pytest
 	@$(VIRTUAL_ENV)/bin/pytest -xsv tests.py
+
+.PHONY: mypy
+mypy:
+	$(VIRTUAL_ENV)/bin/mypy aioauth_client.py
 
 OPEN := $(shell command -v open 2> /dev/null)
 open:
@@ -88,4 +92,3 @@ server: $(VIRTUAL_ENV)/bin/pytest
 .PHONY: example
 example:
 	make -j server open
-

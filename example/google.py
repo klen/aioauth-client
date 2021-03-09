@@ -44,14 +44,14 @@ async def oauth(request):
         client_secret=cfg.client_secret
     )
 
-    if 'code' not in request.query:
+    if 'code' not in request.url.query:
         return ResponseRedirect(client.get_authorize_url(
             scope='email profile',
             redirect_uri=cfg.redirect_uri
         ))
 
     token, data = await client.get_access_token(
-        request.query['code'],
+        request.url.query['code'],
         redirect_uri=cfg.redirect_uri
     )
     request.session['token'] = token

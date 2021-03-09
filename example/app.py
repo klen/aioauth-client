@@ -19,7 +19,7 @@ from .config import CREDENTIALS
 from aioauth_client import ClientRegistry, OAuth1Client, GithubClient
 
 
-app = App()
+app = App(debug=True)
 
 
 @app.route('/')
@@ -61,7 +61,7 @@ async def oauth(request):
         str(request.url.with_query(''))
 
     # Check if is not redirect from provider
-    if client.shared_key not in request.query:
+    if client.shared_key not in request.url.query:
 
         # For oauth1 we need more work
         if isinstance(client, OAuth1Client):
@@ -80,7 +80,7 @@ async def oauth(request):
         client.oauth_token_secret = request.app.secret
         client.oauth_token = request.app.token
 
-    _, meta = await client.get_access_token(request.query)
+    _, meta = await client.get_access_token(request.url.query)
     user, info = await client.user_info()
     text = f"""
         <link rel="stylesheet"
@@ -114,11 +114,11 @@ async def github(request):
         client_id='b6281b6fe88fa4c313e6',
         client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
     )
-    if 'code' not in request.query:
+    if 'code' not in request.url.query:
         return ResponseRedirect(github.get_authorize_url(scope='user:email'))
 
     # Get access token
-    code = request.query['code']
+    code = request.url.query['code']
     token, _ = await github.get_access_token(code)
     assert token
 
