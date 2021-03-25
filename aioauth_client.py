@@ -149,11 +149,15 @@ class Client(object, metaclass=ClientRegistry):
         """String representation."""
         return f"<{self}>"
 
-    async def _request(self, method: str, url: str, **options) -> t.Union[t.Dict, str]:
+    async def _request(self, method: str, url: str, raise_for_status: bool = False,
+                       **options) -> t.Union[t.Dict, str]:
         """Make a request through HTTPX."""
         transport = self.transport or httpx.AsyncClient()
         async with transport as client:
             response = await client.request(method, url, **options)
+            if raise_for_status and response.status_code >= 300:
+                raise OAuthException(str(response))
+
             self.logger.debug("Request %s: %s %r", method, url, options)
             if 'json' in response.headers.get('CONTENT-TYPE'):
                 return response.json()
@@ -171,7 +175,7 @@ class Client(object, metaclass=ClientRegistry):
             raise NotImplementedError(
                 'The provider doesnt support user_info method.')
 
-        data = await self.request('GET', self.user_info_url, **options)
+        data = await self.request('GET', self.user_info_url, raise_for_status=True, **options)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
@@ -246,7 +250,8 @@ class OAuth1Client(Client):
     async def get_request_token(self, **params) -> t.Tuple[str, str, t.Any]:
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
-        data = await self.request('GET', self.request_token_url, params=params)
+        data = await self.request(
+            'GET', self.request_token_url, raise_for_status=True, params=params)
         if not isinstance(data, dict):
             return '', '', data
 
@@ -269,8 +274,9 @@ class OAuth1Client(Client):
                 'Failed to obtain OAuth 1.0 access token. '
                 'Request token is invalid')
 
-        data = await self.request('POST', self.access_token_url, headers=headers, params={
-            'oauth_verifier': oauth_verifier, 'oauth_token': request_token})
+        data = await self.request(
+            'POST', self.access_token_url, raise_for_status=True, headers=headers,
+            params={'oauth_verifier': oauth_verifier, 'oauth_token': request_token})
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -337,7 +343,7 @@ class OAuth2Client(Client):
 
         self.access_token = None
         data = await self.request(
-            'POST', self.access_token_url, data=payload, headers=headers)
+            'POST', self.access_token_url, raise_for_status=True, data=payload, headers=headers)
 
         if not isinstance(data, dict):
             return '', data
