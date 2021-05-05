@@ -20,6 +20,12 @@ def test_userinfo_container():
     assert user.id == None
 
 
+def test_signatures():
+    sig = HmacSha1Signature()
+    assert sig.name
+    assert sig.sign('secret', 'GET', '/test', oauth_token_secret='secret')
+
+
 @pytest.mark.skip
 def test_oauth1(loop):  # noqa
     twitter = TwitterClient(

@@ -32,11 +32,11 @@ jobs:
       uses: actions/cache@v2
       with:
         path: env
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements-tests.txt') }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}
 
     - name: Setup requirements
       run: |
-        python -m venv env && env/bin/pip install -r requirements-tests.txt
+        python -m venv env && env/bin/pip install -e .[tests]
       if: steps.cache-env.outputs.cache-hit != 'true'
 
     - name: Test with pytest

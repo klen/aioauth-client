@@ -63,16 +63,12 @@ upload: clean
 VIRTUAL_ENV ?= env
 $(VIRTUAL_ENV): setup.cfg
 	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install -e .[build]
+	@$(VIRTUAL_ENV)/bin/pip install -e .[build,tests,example]
 	@touch $(VIRTUAL_ENV)
-
-$(VIRTUAL_ENV)/bin/pytest: requirements-tests.txt $(VIRTUAL_ENV) 
-	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
-	@touch $(VIRTUAL_ENV)/bin/py.test
 
 .PHONY: t test
 # target: test - Runs tests
-t test: $(VIRTUAL_ENV)/bin/pytest
+t test: $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/pytest -xsv tests.py
 
 .PHONY: mypy
@@ -86,7 +82,7 @@ ifdef OPEN
 	open http://localhost:5000
 endif
 
-server: $(VIRTUAL_ENV)/bin/pytest
+server: $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/uvicorn --reload --port 5000 example.app:app
 
 .PHONY: example

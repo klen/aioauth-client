@@ -13,7 +13,6 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
 #  import aiohttp
 import httpx
-import yarl
 
 
 __version__ = "0.25.6"
@@ -69,14 +68,7 @@ class HmacSha1Signature(Signature):
     def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
              escape: bool = False, **params) -> str:
         """Create a signature using HMAC-SHA1."""
-        if escape:
-            query = '&'.join(["%s=%s" % item for item in sorted([
-                (self._escape(k), self._escape(v)) for k, v in params.items()
-            ])])
-
-        else:
-            url, query = str(yarl.URL(url).with_query(sorted(params.items()))).split('?', 1)
-
+        query = urlencode(params)
         signature = "&".join(map(self._escape, (method.upper(), url, query)))
 
         key = self._escape(consumer_secret) + "&"
@@ -85,20 +77,6 @@ class HmacSha1Signature(Signature):
 
         hashed = hmac.new(key.encode(), signature.encode(), sha1)
         return base64.b64encode(hashed.digest()).decode()
-
-
-class PlaintextSignature(Signature):
-    """PLAINTEXT signature-method."""
-
-    name = 'PLAINTEXT'
-
-    def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
-             **params) -> str:
-        """Create a signature using PLAINTEXT."""
-        key = self._escape(consumer_secret) + '&'
-        if oauth_token_secret:
-            key += self._escape(oauth_token_secret)
-        return key
 
 
 class ClientRegistry(type):
