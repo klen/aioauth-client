@@ -299,7 +299,7 @@ class OAuth2Client(Client):
         if access_token:
             headers.setdefault('Authorization', 'Bearer %s' % access_token)
 
-        return self._request(method, url, headers=headers, **options)
+        return self._request(method, url, headers=headers, params=params, **options)
 
     async def get_access_token(self, code: str, redirect_uri: str = None,
                                headers: t.Dict = None, **payload) -> t.Tuple[str, t.Any]:
