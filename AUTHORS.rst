@@ -2,13 +2,13 @@
 Credits
 =======
 
-Development Lead
-----------------
+Package maintainer
+------------------
 
 * Kirill Klenov <horneds@gmail.com>
 
-Contributors
-------------
+fellow contributors
+-------------------
 
 * Andrew Grigorev (https://github.com/ei-grad)
 * Arthur Darcet (https://github.com/arthurdarcet)
@@ -22,3 +22,4 @@ Contributors
 * Bajusz Tamás (https://github.com/gbtami)
 * Dougal Matthews (https://github.com/d0ugal)
 * Lefteris Chatzimparmpas (https://github.com/lefcha)
+* Syphdias (https://github.com/Syphdias)
