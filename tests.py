@@ -1,6 +1,6 @@
 from unittest import mock
+from httpx import Response
 
-import httpx
 import pytest
 
 from aioauth_client import * # noqa
@@ -12,6 +12,13 @@ from aioauth_client import * # noqa
 ], autouse=True)
 def aiolib(request):
     return request.param
+
+
+@pytest.fixture(autouse=True)
+def http():
+    with mock.patch('httpx.AsyncClient.request') as mocked:
+        mocked.return_value = Response(200, text='response=ok')
+        yield mocked
 
 
 def test_userinfo_container():
@@ -51,64 +58,72 @@ def test_oauth1(loop):  # noqa
         loop.run_until_complete(coro)
 
 
-async def test_client():
-    with mock.patch('httpx.AsyncClient.request') as mocked:
-        mocked.return_value = httpx.Response(200, text="test=passed")
-        google = GoogleClient(client_id='123', client_secret='456', access_token='789')
-        data = await google.request('GET', '/')
-        assert data == {'test': 'passed'}
-
-
-async def test_oauth2():  # noqa
-    github = GithubClient(
-        client_id='b6281b6fe88fa4c313e6',
-        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
+async def test_client(http):
+    google = GoogleClient(client_id='123', client_secret='456', access_token='789')
+    data = await google.request('GET', '/')
+    assert data == {'response': 'ok'}
+    http.assert_called_with(
+        'GET', 'https://www.googleapis.com/', params=None,
+        headers={
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'Authorization': 'Bearer 789'
+        }
     )
+
+
+async def test_oauth2(http):
+    github = GithubClient(client_id='cid', client_secret='csecret')
     assert github
-
     assert 'github' in ClientRegistry.clients
+    assert github.get_authorize_url() == 'https://github.com/login/oauth/authorize?client_id=cid&response_type=code'  # noqa
 
-    assert github.get_authorize_url()
+    http.return_value = Response(200, json={'access_token': 'TEST-TOKEN'})
+    token, meta = await github.get_access_token('000')
+    assert token == 'TEST-TOKEN'
+    assert meta
+    assert http.called
 
-    with mock.patch('aioauth_client.OAuth2Client._request') as mocked:
-        mocked.return_value = {'access_token': 'TEST-TOKEN'}
-        token, meta = await github.get_access_token('000')
-        assert mocked.called
-        assert token == 'TEST-TOKEN'
-        assert meta
+    http.reset_mock()
+    http.return_value = Response(200, json={'access_token': 'TEST-TOKEN'})
 
-        mocked.reset_mock()
-        mocked.return_value = {'access_token': 'TEST-TOKEN'}
-
-        res = await github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
-        assert res
-        mocked.assert_called_with(
-            'GET', 'https://api.github.com/user',
-            headers={
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'Authorization': 'Bearer NEW-TEST-TOKEN'
-            }
-        )
-
-
-async def test_custom_client():
-    transport = httpx.AsyncClient()
-    github = GithubClient(
-        client_id='b6281b6fe88fa4c313e6',
-        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
-        transport=transport,
+    res = await github.request('GET', 'user', access_token='NEW-TEST-TOKEN')
+    assert res
+    http.assert_called_with(
+        'GET', 'https://api.github.com/user', params=None,
+        headers={
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'Authorization': 'Bearer NEW-TEST-TOKEN'
+        }
     )
+
+
+async def test_oauth2_request(http):
+    github = GithubClient(client_id='cid', client_secret='csecret', access_token='token')
+    res = await github.request('GET', '/user', params={'test': 'ok'})
+    assert res
+    http.assert_called_with(
+        'GET', 'https://api.github.com/user', params={'test': 'ok'},
+        headers={
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'Authorization': 'Bearer token'
+        }
+    )
+
+
+async def test_custom_client(http):
+    transport = httpx.AsyncClient()
+    github = GithubClient(client_id='cid', client_secret='csecret', transport=transport)
     assert github.transport
 
-    with mock.patch.object(transport, 'send') as mocked:
-        res = httpx.Response(200, headers={'Content-Type':  'json'})
-        res._text = '{"access_token": "TOKEN"}'
-        mocked.return_value = res
+    http.return_value = Response(200, json={'access_token': 'TOKEN'})
 
-        token, meta = await github.get_access_token('000')
-        assert token
-        assert meta
-        assert mocked.called
+    token, meta = await github.get_access_token('000')
+    assert token
+    assert meta
+    assert http.called
+
 
 # pylama:ignore=W0401,E711
