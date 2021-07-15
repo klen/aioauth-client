@@ -68,8 +68,14 @@ class HmacSha1Signature(Signature):
     def sign(self, consumer_secret: str, method: str, url: str, oauth_token_secret: str = None,
              escape: bool = False, **params) -> str:
         """Create a signature using HMAC-SHA1."""
-        query = urlencode(params)
-        signature = "&".join(map(self._escape, (method.upper(), url, query)))
+        if escape:
+            query = [(self._escape(k), self._escape(v)) for k, v in params.items()]
+            query_string = '&'.join(['%s=%s' % item for item in sorted(query)])
+
+        else:
+            query_string = urlencode(params)
+
+        signature = "&".join(map(self._escape, (method.upper(), url, query_string)))
 
         key = self._escape(consumer_secret) + "&"
         if oauth_token_secret:
@@ -158,7 +164,7 @@ class Client(object, metaclass=ClientRegistry):
         return user, data
 
     @staticmethod
-    def user_parse(data) -> t.Generator[t.Tuple[str, t.Any], None, None]:
+    def user_parse(data: t.Any) -> t.Generator[t.Tuple[str, t.Any], None, None]:
         """Parse user's information from given provider data."""
         yield 'id', None
 
@@ -351,7 +357,7 @@ class Bitbucket2Client(OAuth2Client):
     user_info_url = 'https://api.bitbucket.org/2.0/user'
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from the provider."""
         yield 'id', data.get('uuid')
         yield 'username', data.get('username')
@@ -376,7 +382,7 @@ class DiscordClient(OAuth2Client):
     user_info_url = 'https://discordapp.com/api/v6/users/@me'
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from the provider."""
         yield 'id', data.get('id')
         yield 'username', data.get('username')
@@ -402,7 +408,7 @@ class Flickr(OAuth1Client):
                     'method=flickr.test.login&format=json&nojsoncallback=1'  # noqa
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from the provider."""
         user_ = data.get('user', {})
         yield 'id', data.get('user_nsid') or user_.get('id')
@@ -428,7 +434,7 @@ class LichessClient(OAuth2Client):
     user_info_url = 'https://lichess.org/api/account'
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from provider."""
         yield 'id', data.get('id')
         yield 'username', data.get('username')
@@ -455,7 +461,7 @@ class Meetup(OAuth1Client):
     request_token_url = 'https://api.meetup.com/oauth/request/'
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from the provider."""
         yield 'id', data.get('id') or data.get('member_id')
         yield 'locale', data.get('lang')
@@ -478,7 +484,7 @@ class Plurk(OAuth1Client):
     user_info_url = 'http://www.plurk.com/APP/Profile/getOwnProfile'
 
     @staticmethod
-    def user_parse(data):
+    def user_parse(data: t.Dict[str, t.Any]):
         """Parse information from the provider."""
         _user = data.get('user_info', {})
         _id = _user.get('id') or _user.get('uid')

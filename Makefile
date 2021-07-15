@@ -53,7 +53,7 @@ $(VIRTUAL_ENV): setup.cfg
 .PHONY: t test
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pytest -xsv tests.py
+	@$(VIRTUAL_ENV)/bin/pytest -xsv --mypy tests
 
 .PHONY: mypy
 mypy:
