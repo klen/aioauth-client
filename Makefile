@@ -57,7 +57,7 @@ t test: $(VIRTUAL_ENV)
 
 .PHONY: mypy
 mypy:
-	$(VIRTUAL_ENV)/bin/mypy aioauth_client.py
+	$(VIRTUAL_ENV)/bin/mypy aioauth_client
 
 OPEN := $(shell command -v open 2> /dev/null)
 open:
