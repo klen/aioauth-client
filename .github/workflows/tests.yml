@@ -17,23 +17,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
     - name: Checkout changes
-      uses: actions/checkout@v2
+      uses: actions/checkout@main
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@main
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Use cache
       id: cache-env
-      uses: actions/cache@v2
+      uses: actions/cache@main
       with:
         path: env
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/requirements.txt', 'requirements/requirements-tests.txt') }}
 
     - name: Setup requirements
       run: |

@@ -1,7 +1,11 @@
-from unittest import mock
-
 import pytest
 from httpx import Response
+
+# python 3.7
+try:
+    import mock  # type: ignore
+except ImportError:
+    from unittest import mock  # type: ignore
 
 
 @pytest.fixture(params=[

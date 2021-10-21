@@ -15,6 +15,10 @@ AIOAuth Client -- OAuth support for Asyncio_ / Trio_ libraries.
     :target: https://pypi.org/project/aioauth-client/
     :alt: PYPI Version
 
+.. image:: https://img.shields.io/pypi/pyversions/aioauth-client
+    :target: https://pypi.org/project/aioauth-client/
+    :alt: Python Versions
+
 .. _contents:
 
 .. contents::
@@ -24,7 +28,7 @@ AIOAuth Client -- OAuth support for Asyncio_ / Trio_ libraries.
 Requirements
 =============
 
-- python >= 3.8
+- python >= 3.7
 
 .. _installation:
 

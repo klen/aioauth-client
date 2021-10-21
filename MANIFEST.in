@@ -4,6 +4,8 @@ include LICENSE
 include README.rst
 include aioauth_client/py.typed
 
+recursive-include requirements *.txt
+
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 recursive-exclude * *.orig
