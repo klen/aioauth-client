@@ -168,6 +168,14 @@ class Client(object, metaclass=ClientRegistry):
         """Parse user's information from given provider data."""
         yield 'id', None
 
+    def get_authorize_url(self, **params) -> str:
+        """Get an authorization URL."""
+        return self.authorize_url
+
+    async def get_access_token(self, *args, **kwargs) -> t.Tuple:
+        """Abstract base method."""
+        raise NotImplementedError
+
 
 class OAuth1Client(Client):
     """Implement OAuth1."""
@@ -243,8 +251,8 @@ class OAuth1Client(Client):
         self.oauth_token_secret = data.get('oauth_token_secret')
         return self.oauth_token, self.oauth_token_secret, data  # type: ignore
 
-    async def get_access_token(
-            self, oauth_verifier, request_token=None, headers=None, **params):
+    async def get_access_token(  # type: ignore
+            self, oauth_verifier, request_token=None, headers=None, **params) -> t.Tuple:
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -261,6 +269,11 @@ class OAuth1Client(Client):
         data = await self.request(
             'POST', self.access_token_url, raise_for_status=True, headers=headers,
             params={'oauth_verifier': oauth_verifier, 'oauth_token': request_token})
+
+        if isinstance(data, str):
+            raise OAuthException(
+                'Failed to obtain OAuth 1.0 access token. '
+                f"Invalid data: {data}")
 
         self.oauth_token = data.get('oauth_token')
         self.oauth_token_secret = data.get('oauth_token_secret')
@@ -307,7 +320,7 @@ class OAuth2Client(Client):
 
         return self._request(method, url, headers=headers, params=params, **options)
 
-    async def get_access_token(self, code: str, redirect_uri: str = None,
+    async def get_access_token(self, code: str, redirect_uri: str = None,  # type: ignore
                                headers: t.Dict = None, **payload) -> t.Tuple[str, t.Any]:
         """Get an access_token from OAuth provider.
 
