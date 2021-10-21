@@ -172,7 +172,7 @@ class Client(object, metaclass=ClientRegistry):
         """Get an authorization URL."""
         return self.authorize_url
 
-    async def get_access_token(self, *args, **kwargs) -> t.Tuple:
+    async def get_access_token(self, *args, **kwargs) -> t.Tuple[str, t.Any]:
         """Abstract base method."""
         raise NotImplementedError
 
@@ -239,20 +239,20 @@ class OAuth1Client(Client):
 
         return self._request(method, url, params=oparams, headers=headers, **options)
 
-    async def get_request_token(self, **params) -> t.Tuple[str, str, t.Any]:
+    async def get_request_token(self, **params) -> t.Tuple[str, t.Any]:
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
         data = await self.request(
             'GET', self.request_token_url, raise_for_status=True, params=params)
         if not isinstance(data, dict):
-            return '', '', data
+            return '', data
 
-        self.oauth_token = data.get('oauth_token')
+        self.oauth_token = data.get('oauth_token') or ''
         self.oauth_token_secret = data.get('oauth_token_secret')
-        return self.oauth_token, self.oauth_token_secret, data  # type: ignore
+        return self.oauth_token, data
 
-    async def get_access_token(  # type: ignore
-            self, oauth_verifier, request_token=None, headers=None, **params) -> t.Tuple:
+    async def get_access_token(self, oauth_verifier, request_token=None,  # type: ignore
+                               headers=None, **params) -> t.Tuple[str, t.Any]:
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -275,10 +275,10 @@ class OAuth1Client(Client):
                 'Failed to obtain OAuth 1.0 access token. '
                 f"Invalid data: {data}")
 
-        self.oauth_token = data.get('oauth_token')
+        self.oauth_token = data.get('oauth_token') or ''
         self.oauth_token_secret = data.get('oauth_token_secret')
 
-        return self.oauth_token, self.oauth_token_secret, data
+        return self.oauth_token, data
 
 
 class OAuth2Client(Client):
