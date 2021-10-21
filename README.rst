@@ -44,47 +44,6 @@ Installation
 Usage
 =====
 
-
-.. code:: python
-
-    # OAuth1
-    from aioauth_client import TwitterClient
-
-    twitter = TwitterClient(
-        consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
-        consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
-    )
-
-    request_token, request_token_secret, _ = await twitter.get_request_token()
-
-    authorize_url = twitter.get_authorize_url(request_token)
-    print("Open",authorize_url,"in a browser")
-    # ...
-    # Reload client to authorize_url and get oauth_verifier
-    # ...
-    print("PIN code:")
-    oauth_verifier = input()
-    oauth_token, oauth_token_secret, _ = await twitter.get_access_token(oauth_verifier)
-
-    # Save the tokens for later use
-
-    # ...
-
-    twitter = TwitterClient(
-        consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
-        consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
-        oauth_token=oauth_token,
-        oauth_token_secret=oauth_token_secret,
-    )
-
-    # Or you can use this if you have initilized client already
-    # twitter.access_token = oauth_token
-    # twitter.access_token_secret = oauth_token_secret
-
-    timeline = await twitter.request('GET', 'statuses/home_timeline.json')
-    content = await timeline.read()
-    print(content)
-
 .. code:: python
 
     # OAuth2
@@ -118,6 +77,48 @@ Usage
 
     response = await github.request('GET', 'user')
     user_info = await response.json()
+
+
+.. code:: python
+
+    # OAuth1
+    from aioauth_client import TwitterClient
+
+    twitter = TwitterClient(
+        consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
+        consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
+    )
+
+    request_token, _ = await twitter.get_request_token()
+
+    authorize_url = twitter.get_authorize_url(request_token)
+    print("Open",authorize_url,"in a browser")
+    # ...
+    # Reload client to authorize_url and get oauth_verifier
+    # ...
+    print("PIN code:")
+    oauth_verifier = input()
+    oauth_token, data = await twitter.get_access_token(oauth_verifier)
+    oauth_token_secret = data.get('oauth_token_secret')
+
+    # Save the tokens for later use
+
+    # ...
+
+    twitter = TwitterClient(
+        consumer_key='J8MoJG4bQ9gcmGh8H7XhMg',
+        consumer_secret='7WAscbSy65GmiVOvMU5EBYn5z80fhQkcFWSLMJJu4',
+        oauth_token=oauth_token,
+        oauth_token_secret=oauth_token_secret,
+    )
+
+    # Or you can use this if you have initilized client already
+    # twitter.access_token = oauth_token
+    # twitter.access_token_secret = oauth_token_secret
+
+    timeline = await twitter.request('GET', 'statuses/home_timeline.json')
+    content = await timeline.read()
+    print(content)
 
 
 Example
