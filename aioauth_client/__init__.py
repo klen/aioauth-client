@@ -15,7 +15,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 import httpx
 
 
-__version__ = "0.27.2"
+__version__ = "0.27.3"
 __project__ = "aioauth-client"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
