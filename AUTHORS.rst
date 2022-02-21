@@ -24,3 +24,4 @@ fellow contributors
 * Peyman Mortazavi (https://github.com/peymanmortazavi)
 * Syphdias (https://github.com/Syphdias)
 * sunghyun-lee (https://github.com/sunghyun-lee)
+* iTitou (https://github.com/titouanc)
