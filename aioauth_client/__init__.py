@@ -73,7 +73,7 @@ class HmacSha1Signature(Signature):
             query_string = '&'.join(['%s=%s' % item for item in sorted(query)])
 
         else:
-            query_string = urlencode(params)
+            query_string = urlencode(sorted(params.items()))
 
         signature = "&".join(map(self._escape, (method.upper(), url, query_string)))
 
