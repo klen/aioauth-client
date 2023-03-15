@@ -133,6 +133,25 @@ class Client(object, metaclass=ClientRegistry):
         """String representation."""
         return f"<{self}>"
 
+    def _strip_credentials_from_dict(self, options: dict[str, t.Any]) -> dict[str, t.Any]:
+        """
+        Returns a copy of the given options dict that does _not_ contain sensitive data.
+        This is thought to be used for logging purposes.
+        """
+        # https://github.com/klen/aioauth-client/issues/191
+        result = options.copy()
+        if "headers" in options and options["headers"] is not None:
+            headers = options["headers"].copy()
+            if "Authorization" in headers and headers["Authorization"].startswith("Bearer "):
+                headers["Authorization"] = "Bearer xxxxxx"
+            result["headers"] = headers
+        if "data" in options and options["data"] is not None:
+            data = options["data"].copy()
+            if "client_secret" in data:
+                data["client_secret"] = "xxxxxx"
+            result["data"] = data
+        return result
+
     async def _request(self, method: str, url: str, raise_for_status: bool = False,
                        **options) -> t.Union[t.Dict, str]:
         """Make a request through HTTPX."""
@@ -142,7 +161,8 @@ class Client(object, metaclass=ClientRegistry):
             if raise_for_status and response.status_code >= 300:
                 raise OAuthException(str(response))
 
-            self.logger.debug("Request %s: %s %r", method, url, options)
+            stripped_options_for_logging = self._strip_credentials_from_dict(options)
+            self.logger.debug("Request %s: %s %r", method, url, stripped_options_for_logging)
             if 'json' in response.headers.get('CONTENT-TYPE'):
                 return response.json()
 
