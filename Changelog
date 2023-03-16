@@ -1,3 +1,10 @@
+2023-03-17  klen
+
+	* Support Python 3.11
+	* Drop support Python 3.7
+	* Do not log passwords in debug mode
+	* Migrate to poetry
+
 2021-10-21  klen
 
 	* Support Python 3.10

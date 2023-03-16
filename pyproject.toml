@@ -1,0 +1,77 @@
+[tool.poetry]
+name = "aioauth-client"
+version = "0.27.3"
+description = "OAuth support for Asyncio/Trio libraries"
+readme = "README.rst"
+homepage = "https://github.com/klen/aioauth-client"
+repository = "https://github.com/klen/aioauth-client"
+authors = ["Kirill Klenov <horneds@gmail.com>"]
+license = "MIT"
+keywords = ["asyncio", "trio", "oauth"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Internet :: WWW/HTTP",
+]
+packages = [
+  { include = "aioauth_client"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-aio = "*"
+pytest-mypy = "*"
+ruff = "*"
+pre-commit = "*"
+trio = "*"
+
+[tool.poetry.group.example.dependencies]
+asgi-tools = "*"
+asgi-sessions = "*"
+uvicorn = "*"
+
+[tool.pytest.ini_options]
+addopts = "-svx --mypy"
+
+[tool.mypy]
+packages = ["aioauth_client"]
+ignore_missing_imports = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38,py39,py310,py311
+
+[testenv]
+deps = -e .[tests]
+commands =
+	pytest tests
+"""
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+exclude = [".venv", "docs", "examples"]
+select = ["ALL"]
+ignore = ["D", "UP", "ANN", "DJ", "EM", "RSE", "SLF", "RET", "S101", "PLR2004", "PLR0912", "N804", "A003", "TRY003"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+preview = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,5 +1,0 @@
-[report]
-source=aioauth_client
-
-[run]
-source=aioauth_client
