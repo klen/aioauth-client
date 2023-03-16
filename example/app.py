@@ -11,19 +11,21 @@ Run the example with uvicorn:
 
 """
 
-from asgi_tools import App, ResponseRedirect
+
 import html
 from pprint import pformat
 
-from .config import CREDENTIALS
-from aioauth_client import ClientRegistry, OAuth1Client, GithubClient
+from asgi_tools import App, ResponseRedirect
 
+from aioauth_client import ClientRegistry, GithubClient, OAuth1Client
+
+from .config import CREDENTIALS
 
 app = App(debug=True)
 
 
-@app.route('/')
-async def index(request):
+@app.route("/")
+async def index(_):
     return """
         <link rel="stylesheet"
             href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
@@ -47,22 +49,24 @@ async def index(request):
     """
 
 
-@app.route('/oauth/{provider}')
+@app.route("/oauth/{provider}")
 async def oauth(request):
-    provider = request.path_params.get('provider')
+    provider = request.path_params.get("provider")
     if provider not in CREDENTIALS:
-        return 404, 'Unknown provider %s' % provider
+        return 404, "Unknown provider %s" % provider
 
     # Create OAuth1/2 client
-    Client = ClientRegistry.clients[provider]
+    client_cls = ClientRegistry.clients[provider]
     params = CREDENTIALS[provider]
-    client = Client(**params)
-    client.params['oauth_callback' if issubclass(Client, OAuth1Client) else 'redirect_uri'] = \
-        str(request.url.with_query(''))
+    client = client_cls(**params)
+    client.params[
+        "oauth_callback" if issubclass(client_cls, OAuth1Client) else "redirect_uri"
+    ] = str(
+        request.url.with_query(""),
+    )
 
     # Check if is not redirect from provider
     if client.shared_key not in request.url.query:
-
         # For oauth1 we need more work
         if isinstance(client, OAuth1Client):
             token, secret, _ = await client.get_request_token()
@@ -73,7 +77,7 @@ async def oauth(request):
             request.app.token = token
 
         # Redirect client to provider
-        return ResponseRedirect(client.get_authorize_url(access_type='offline'))
+        return ResponseRedirect(client.get_authorize_url(access_type="offline"))
 
     # For oauth1 we need more work
     if isinstance(client, OAuth1Client):
@@ -111,20 +115,17 @@ async def oauth(request):
 # Simple Github (OAuth2) example (not connected to app)
 async def github(request):
     github = GithubClient(
-        client_id='b6281b6fe88fa4c313e6',
-        client_secret='21ff23d9f1cad775daee6a38d230e1ee05b04f7c',
+        client_id="b6281b6fe88fa4c313e6",
+        client_secret="21ff23d9f1cad775daee6a38d230e1ee05b04f7c",  # noqa:
     )
-    if 'code' not in request.url.query:
-        return ResponseRedirect(github.get_authorize_url(scope='user:email'))
+    if "code" not in request.url.query:
+        return ResponseRedirect(github.get_authorize_url(scope="user:email"))
 
     # Get access token
-    code = request.url.query['code']
+    code = request.url.query["code"]
     token, _ = await github.get_access_token(code)
     assert token
 
     # Get a resource `https://api.github.com/user`
-    response = await github.request('GET', 'user')
+    response = await github.request("GET", "user")
     return await response.read()
-
-
-# pylama:ignore=D

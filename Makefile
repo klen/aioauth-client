@@ -37,11 +37,11 @@ OPEN := $(shell command -v open 2> /dev/null)
 open:
 	sleep 1
 ifdef OPEN
-	open http://localhost:5000
+	open http://localhost:8080
 endif
 
 server: $(VIRTUAL_ENV)
-	@poetry run uvicorn --reload --port 5000 example.app:app
+	@poetry run uvicorn --reload --port 8080 example.app:app
 
 .PHONY: example
 example:

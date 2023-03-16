@@ -28,7 +28,7 @@ AIOAuth Client -- OAuth support for Asyncio_ / Trio_ libraries.
 Requirements
 =============
 
-- python >= 3.7
+- python >= 3.8
 
 .. _installation:
 
@@ -128,7 +128,7 @@ Run example with command: ::
 
     make example
 
-Open http://localhost:5000 in your browser.
+Open http://localhost:8080 in your browser.
 
 .. _bugtracker:
 

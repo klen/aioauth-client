@@ -14,48 +14,50 @@ Run the example with uvicorn:
 
 """
 
-from asgi_tools import App, ResponseRedirect
 from asgi_sessions import SessionMiddleware
+from asgi_tools import App, ResponseRedirect
+
 from aioauth_client import GoogleClient
 
 from .config import CREDENTIALS
 
-
 app = App()
-app.middleware(SessionMiddleware.setup(secret_key='aioauth-client'))
+app.middleware(SessionMiddleware.setup(secret_key="aioauth-client"))  # noqa:
 
 
-class cfg:
-    redirect_uri = 'http://localhost:5000/oauth/google'  # define it in google api console
+class CFG:
+    redirect_uri = "http://localhost:5000/oauth/google"  # define it in google api console
 
     # client id and secret from google api console
-    client_id = CREDENTIALS['google']['client_id']
-    client_secret = CREDENTIALS['google']['client_secret']
+    client_id = CREDENTIALS["google"]["client_id"]
+    client_secret = CREDENTIALS["google"]["client_secret"]
 
     # secret_key for session encryption
     # key must be 32 url-safe base64-encoded bytes
-    secret_key = b'abcdefghijklmnopqrstuvwxyz123456'
+    secret_key = b"abcdefghijklmnopqrstuvwxyz123456"
 
 
-@app.route('/oauth/google')
+@app.route("/oauth/google")
 async def oauth(request):
     client = GoogleClient(
-        client_id=cfg.client_id,
-        client_secret=cfg.client_secret
+        client_id=CFG.client_id,
+        client_secret=CFG.client_secret,
     )
 
-    if 'code' not in request.url.query:
-        return ResponseRedirect(client.get_authorize_url(
-            scope='email profile',
-            redirect_uri=cfg.redirect_uri
-        ))
+    if "code" not in request.url.query:
+        return ResponseRedirect(
+            client.get_authorize_url(
+                scope="email profile",
+                redirect_uri=CFG.redirect_uri,
+            ),
+        )
 
     token, data = await client.get_access_token(
-        request.url.query['code'],
-        redirect_uri=cfg.redirect_uri
+        request.url.query["code"],
+        redirect_uri=CFG.redirect_uri,
     )
-    request.session['token'] = token
-    return ResponseRedirect('/')
+    request.session["token"] = token
+    return ResponseRedirect("/")
 
 
 def login_required(fn):
@@ -65,28 +67,28 @@ def login_required(fn):
     """
 
     async def wrapped(request, **kwargs):
-        if 'token' not in request.session:
-            return ResponseRedirect('/oauth/google')
+        if "token" not in request.session:
+            return ResponseRedirect("/oauth/google")
 
         client = GoogleClient(
-            client_id=cfg.client_id,
-            client_secret=cfg.client_secret,
-            access_token=request.session['token']
+            client_id=CFG.client_id,
+            client_secret=CFG.client_secret,
+            access_token=request.session["token"],
         )
 
         try:
             user, info = await client.user_info()
-        except Exception:
-            return ResponseRedirect(cfg.oauth_redirect_path)
+        except Exception:  # noqa:
+            return ResponseRedirect(CFG.oauth_redirect_path)
 
         return await fn(request, user, **kwargs)
 
     return wrapped
 
 
-@app.route('/')
+@app.route("/")
 @login_required
-async def index(request, user):
+async def index(_, user):
     text = f"""
         <link rel="stylesheet"
             href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
