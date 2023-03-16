@@ -59,10 +59,10 @@ async def oauth(request):
     client_cls = ClientRegistry.clients[provider]
     params = CREDENTIALS[provider]
     client = client_cls(**params)
-    client.params[
-        "oauth_callback" if issubclass(client_cls, OAuth1Client) else "redirect_uri"
-    ] = str(
-        request.url.with_query(""),
+    client.params["oauth_callback" if issubclass(client_cls, OAuth1Client) else "redirect_uri"] = (
+        str(
+            request.url.with_query(""),
+        )
     )
 
     # Check if is not redirect from provider

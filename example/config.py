@@ -8,7 +8,9 @@ CREDENTIALS = {
         "client_secret": "21ff23d9f1cad775daee6a38d230e1ee05b04f7c",
     },
     "google": {
-        "client_id": "150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com",  # noqa:
+        "client_id": (
+            "150775235058-9fmas709maee5nn053knv1heov12sh4n.apps.googleusercontent.com"
+        ),  # noqa:
         "client_secret": "df3JwpfRf8RIBz-9avNW8Gx7",
         "scope": "email profile",
     },
