@@ -13,6 +13,40 @@ clean:
 	find $(CURDIR) -name "*.orig" -delete
 	find $(CURDIR)/$(MODULE) -name "__pycache__" | xargs rm -rf
 
+# =============
+#  Development
+# =============
+
+VIRTUAL_ENV ?= .venv
+$(VIRTUAL_ENV): pyproject.toml
+	@poetry install --with dev,example
+	@poetry self add poetry-bumpversion
+	@poetry run pre-commit install --hook-type pre-push
+	@touch $(VIRTUAL_ENV)
+
+.PHONY: t test
+# target: test - Runs tests
+t test: $(VIRTUAL_ENV)
+	@poetry run pytest -xsv --mypy tests
+
+.PHONY: mypy
+mypy:
+	@poetry run mypy aioauth_client
+
+OPEN := $(shell command -v open 2> /dev/null)
+open:
+	sleep 1
+ifdef OPEN
+	open http://localhost:5000
+endif
+
+server: $(VIRTUAL_ENV)
+	@poetry run uvicorn --reload --port 5000 example.app:app
+
+.PHONY: example
+example:
+	make -j server open
+
 # ==============
 #  Bump version
 # ==============
@@ -21,8 +55,10 @@ clean:
 VERSION?=minor
 # target: release - Bump version
 release: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install bump2version
-	@$(VIRTUAL_ENV)/bin/bump2version $(VERSION)
+	@$(eval VFROM := $(shell poetry version -s))
+	@poetry version $(VERSION)
+	@git commit -am "Bump version $(VFROM) → `poetry version -s`"
+	@git tag `poetry version -s`
 	@git checkout master
 	@git merge develop
 	@git checkout develop
@@ -39,36 +75,3 @@ patch:
 .PHONY: major
 major:
 	make release VERSION=major
-
-# =============
-#  Development
-# =============
-
-VIRTUAL_ENV ?= env
-$(VIRTUAL_ENV): setup.py requirements/requirements.txt requirements/requirements-tests.txt
-	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install -e .[build,tests,example]
-	@touch $(VIRTUAL_ENV)
-
-.PHONY: t test
-# target: test - Runs tests
-t test: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pytest -xsv --mypy tests
-
-.PHONY: mypy
-mypy:
-	$(VIRTUAL_ENV)/bin/mypy aioauth_client
-
-OPEN := $(shell command -v open 2> /dev/null)
-open:
-	sleep 1
-ifdef OPEN
-	open http://localhost:5000
-endif
-
-server: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/uvicorn --reload --port 5000 example.app:app
-
-.PHONY: example
-example:
-	make -j server open
