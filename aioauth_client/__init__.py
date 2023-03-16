@@ -1190,8 +1190,8 @@ class TodoistClient(OAuth2Client):
 
     authorize_url = "https://todoist.com/oauth/authorize"
     access_token_url = "https://todoist.com/oauth/access_token"
-    user_info_url = "https://api.todoist.com/sync/v8/sync"
-    base_url = "https://api.todoist.com/rest/v1"
+    user_info_url = "https://api.todoist.com/sync/v9/sync"
+    base_url = "https://api.todoist.com/rest/v2"
     name = "todoist"
 
     async def user_info(self, access_token=None, params=None, **kwargs):
