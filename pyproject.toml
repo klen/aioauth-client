@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aioauth-client"
-version = "0.28.1"
+version = "0.29.0"
 description = "OAuth support for Asyncio/Trio libraries"
 readme = "README.rst"
 homepage = "https://github.com/klen/aioauth-client"
