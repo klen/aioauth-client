@@ -14,19 +14,18 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Internet :: WWW/HTTP",
 ]
-packages = [
-  { include = "aioauth_client"}
-]
+packages = [{ include = "aioauth_client" }]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 httpx = "*"
 
 [tool.poetry.group.dev.dependencies]
@@ -52,24 +51,47 @@ ignore_missing_imports = true
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py38,py39,py310,py311
+envlist = py39,py310,py311,py312,py313
 
 [testenv]
-deps = -e .[tests]
+deps =
+  -e .
+  pytest
+  pytest-aio
+  pytest-mypy
+  trio
 commands =
 	pytest tests
 """
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py39"
 exclude = [".venv", "docs", "examples"]
+
+[tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D", "UP", "ANN", "DJ", "EM", "RSE", "SLF", "RET", "S101", "PLR2004", "PLR0912", "N804", "A003", "TRY003"]
+ignore = [
+  "A003",
+  "ANN",
+  "COM812",
+  "D",
+  "DJ",
+  "EM",
+  "N804",
+  "PLR0912",
+  "PLR2004",
+  "RET",
+  "RSE",
+  "S101",
+  "SLF",
+  "TRY003",
+  "UP",
+]
 
 [tool.black]
 line-length = 100
-target-version = ["py310", "py311"]
+target-version = ["py310", "py311", "py312", "py313"]
 preview = true
 
 [build-system]

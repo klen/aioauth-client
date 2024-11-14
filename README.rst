@@ -28,7 +28,7 @@ AIOAuth Client -- OAuth support for Asyncio_ / Trio_ libraries.
 Requirements
 =============
 
-- python >= 3.8
+- python >= 3.9
 
 .. _installation:
 

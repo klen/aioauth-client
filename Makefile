@@ -21,7 +21,7 @@ VIRTUAL_ENV ?= .venv
 $(VIRTUAL_ENV): pyproject.toml
 	@poetry install --with dev,example
 	@poetry self add poetry-bumpversion
-	@poetry run pre-commit install --hook-type pre-push
+	@poetry run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
 .PHONY: t test

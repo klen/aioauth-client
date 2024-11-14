@@ -1,6 +1,5 @@
 """OAuth support for asyncio/trio libraries."""
 
-
 from __future__ import annotations
 
 import base64
@@ -9,17 +8,7 @@ import logging
 import time
 from hashlib import sha1
 from random import SystemRandom
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Dict,
-    Generator,
-    Optional,
-    Tuple,
-    Type,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Awaitable, ClassVar, Generator, Optional, cast
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit
 
 import httpx
@@ -115,12 +104,12 @@ class HmacSha1Signature(Signature):
 class ClientRegistry(type):
     """Meta class to register OAUTH clients."""
 
-    clients: Dict[str, Type[Client]] = {}
+    clients: ClassVar[dict[str, type[Client]]] = {}
 
     def __new__(cls, name, bases, params):
         """Save created client in self registry."""
         kls = super().__new__(cls, name, bases, params)
-        cls.clients[kls.name] = kls
+        cls.clients[kls.name] = kls  # type: ignore[]
         return kls
 
 
@@ -167,12 +156,7 @@ class Client(object, metaclass=ClientRegistry):
         return f"<{self}>"
 
     async def _request(
-        self,
-        method: str,
-        url: str,
-        *,
-        raise_for_status: bool = False,
-        **options,
+        self, method: str, url: str, *, raise_for_status: bool = False, **options
     ) -> TRes:
         """Make a request through HTTPX."""
         transport = self.transport or httpx.AsyncClient()
@@ -198,22 +182,17 @@ class Client(object, metaclass=ClientRegistry):
         """Make a request to provider."""
         raise NotImplementedError("Shouldnt be called.")
 
-    async def user_info(self, **options) -> Tuple[User, TRes]:
+    async def user_info(self, **options) -> tuple[User, TRes]:
         """Load user information from provider."""
         if not self.user_info_url:
             raise NotImplementedError("The provider doesnt support user_info method.")
 
-        data = await self.request(
-            "GET",
-            self.user_info_url,
-            raise_for_status=True,
-            **options,
-        )
+        data = await self.request("GET", self.user_info_url, raise_for_status=True, **options)
         user = User(**dict(self.user_parse(data)))
         return user, data
 
     @staticmethod
-    def user_parse(_: TRes) -> Generator[Tuple[str, Any], None, None]:
+    def user_parse(data: TRes) -> Generator[tuple[str, Any], None, None]:  # noqa: ARG004
         """Parse user's information from given provider data."""
         yield "id", None
 
@@ -221,7 +200,7 @@ class Client(object, metaclass=ClientRegistry):
         """Get an authorization URL."""
         return self.authorize_url
 
-    async def get_access_token(self, *args, **kwargs) -> Tuple[str, Any]:
+    async def get_access_token(self, *args, **kwargs) -> tuple[str, Any]:
         """Abstract base method."""
         raise NotImplementedError
 
@@ -290,8 +269,8 @@ class OAuth1Client(Client):
             "oauth_signature_method": self.signature.name,
             "oauth_timestamp": str(int(time.time())),
             "oauth_version": self.version,
+            **(params or {}),
         }
-        oparams.update(params or {})
 
         if self.oauth_token:
             oparams["oauth_token"] = self.oauth_token
@@ -313,14 +292,11 @@ class OAuth1Client(Client):
         )
         return self._request(method, url, params=oparams, headers=headers, **options)
 
-    async def get_request_token(self, **params) -> Tuple[str, Any]:
+    async def get_request_token(self, **params) -> tuple[str, Any]:
         """Get a request_token and request_token_secret from OAuth1 provider."""
         params = dict(self.params, **params)
         data = await self.request(
-            "GET",
-            self.request_token_url,
-            raise_for_status=True,
-            params=params,
+            "GET", self.request_token_url, raise_for_status=True, params=params
         )
         if not isinstance(data, dict):
             return "", data
@@ -330,12 +306,8 @@ class OAuth1Client(Client):
         return self.oauth_token, data
 
     async def get_access_token(
-        self,
-        oauth_verifier,
-        request_token=None,
-        headers=None,
-        **_,
-    ) -> Tuple[str, Dict]:
+        self, oauth_verifier, request_token=None, headers=None, **_
+    ) -> tuple[str, dict]:
         """Get access_token from OAuth1 provider.
 
         :returns: (access_token, access_token_secret, provider_data)
@@ -389,12 +361,7 @@ class OAuth2Client(Client):
     ):
         """Initialize the client."""
         super().__init__(
-            base_url,
-            authorize_url,
-            access_token_key,
-            access_token_url,
-            transport,
-            logger,
+            base_url, authorize_url, access_token_key, access_token_url, transport, logger
         )
 
         self.access_token = access_token
@@ -408,7 +375,7 @@ class OAuth2Client(Client):
         params.update({"client_id": self.client_id, "response_type": "code"})
         return f"{ self.authorize_url }?{ urlencode(params) }"
 
-    def request(  # noqa: PLR0913
+    def request(
         self,
         method: str,
         url: str,
@@ -433,9 +400,9 @@ class OAuth2Client(Client):
         self,
         code: str,
         redirect_uri: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         **payload,
-    ) -> Tuple[str, Any]:
+    ) -> tuple[str, Any]:
         """Get an access_token from OAuth provider.
 
         :returns: (access_token, provider_data)
@@ -456,11 +423,7 @@ class OAuth2Client(Client):
 
         self.access_token = ""
         data = await self.request(
-            "POST",
-            self.access_token_url,
-            raise_for_status=True,
-            data=payload,
-            headers=headers,
+            "POST", self.access_token_url, raise_for_status=True, data=payload, headers=headers
         )
 
         if not isinstance(data, dict):
@@ -560,11 +523,11 @@ class Flickr(OAuth1Client):
         if not isinstance(data, dict):
             raise OAuthError("Invalid response: %r", data)
 
-        user_ = cast(Dict, data.get("user", {}))
+        user_ = cast(dict, data.get("user", {}))
         yield "id", data.get("user_nsid") or user_.get("id")
-        yield "username", cast(Dict, user_.get("username", {})).get("_content")
+        yield "username", cast(dict, user_.get("username", {})).get("_content")
         first_name, _, last_name = (
-            cast(Dict, data.get("fullname", {})).get("_content", "").partition(" ")
+            cast(dict, data.get("fullname", {})).get("_content", "").partition(" ")
         )
         yield "first_name", first_name
         yield "last_name", last_name
@@ -593,7 +556,7 @@ class LichessClient(OAuth2Client):
         yield "id", data.get("id")
         yield "username", data.get("username")
         yield "gender", data.get("title")
-        profile = cast(Optional[Dict[str, str]], data.get("profile"))
+        profile = cast(Optional[dict[str, str]], data.get("profile"))
         if profile is not None:
             yield "first_name", profile.get("firstName")
             yield "last_name", profile.get("lastName")
@@ -622,7 +585,7 @@ class Meetup(OAuth1Client):
 
         yield "id", data.get("id") or data.get("member_id")
         yield "locale", data.get("lang")
-        yield "picture", cast(Dict[str, str], data.get("photo", {})).get("photo_link")
+        yield "picture", cast(dict[str, str], data.get("photo", {})).get("photo_link")
 
 
 class Plurk(OAuth1Client):
@@ -646,7 +609,7 @@ class Plurk(OAuth1Client):
         if not isinstance(data, dict):
             raise OAuthError("Invalid response: %r", data)
 
-        user_info = cast(Dict[str, str], data.get("user_info", {}))
+        user_info = cast(dict[str, str], data.get("user_info", {}))
         user_id = user_info.get("id") or user_info.get("uid")
         yield "id", user_id
         yield "locale", user_info.get("default_lang")
@@ -678,8 +641,9 @@ class TwitterClient(OAuth1Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("id") or data.get("user_id")
-        first_name, _, last_name = data["name"].partition(" ")
+        first_name, _, last_name = cast(str, data["name"]).partition(" ")
         yield "first_name", first_name
         yield "last_name", last_name
         yield "email", data.get("email")
@@ -687,7 +651,7 @@ class TwitterClient(OAuth1Client):
         yield "locale", data.get("lang")
         yield "link", data.get("url")
         yield "username", data.get("screen_name")
-        city, _, country = (s.strip() for s in data.get("location", "").partition(","))
+        city, _, country = (s.strip() for s in cast(str, data.get("location", "")).partition(","))
         yield "city", city
         yield "country", country
 
@@ -710,6 +674,7 @@ class TumblrClient(OAuth1Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         _user = data.get("response", {}).get("user", {})
         yield "id", _user.get("name")
         yield "username", _user.get("name")
@@ -729,6 +694,7 @@ class VimeoClient(OAuth1Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         _user = data.get("oauth", {}).get("user", {})
         yield "id", _user.get("id")
         yield "username", _user.get("username")
@@ -758,6 +724,7 @@ class YahooClient(OAuth1Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         _user = data.get("query", {}).get("results", {}).get("profile", {})
         yield "id", _user.get("guid")
         yield "username", _user.get("username")
@@ -793,6 +760,7 @@ class AmazonClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("user_id")
 
 
@@ -813,6 +781,7 @@ class EventbriteClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         for email in data.get("emails", []):
             if email.get("primary"):
                 yield "id", email.get("email")
@@ -844,6 +813,7 @@ class FacebookClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         id_ = data.get("id")
         yield "id", id_
         yield "email", data.get("email")
@@ -882,6 +852,7 @@ class FoursquareClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         user = data.get("response", {}).get("user", {})
         yield "id", user.get("id")
         yield "email", user.get("contact", {}).get("email")
@@ -909,6 +880,7 @@ class GithubClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "email", data.get("email")
         first_name, _, last_name = (data.get("name") or "").partition(" ")
@@ -943,6 +915,7 @@ class GoogleClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "email", data.get("email")
         yield "first_name", data.get("given_name")
@@ -1058,6 +1031,7 @@ class YandexClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "username", data.get("login")
         yield "email", data.get("default_email")
@@ -1090,6 +1064,7 @@ class LinkedinClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse user data."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "email", data.get("emailAddress")
         yield "first_name", data.get("firstName")
@@ -1138,6 +1113,7 @@ class InstagramClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from the provider."""
+        assert isinstance(data, dict)
         user = data.get("data")
         yield "id", user.get("id")
         yield "username", user.get("username")
@@ -1172,6 +1148,7 @@ class SlackClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Convert Slack Response data to UserInfo."""
+        assert isinstance(data, dict)
         user = data.get("profile")
         yield "username", user.get("display_name") or user.get("real_name_normalized")
         yield "picture", user.get("image_72")
@@ -1206,6 +1183,7 @@ class TodoistClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse user data."""
+        assert isinstance(data, dict)
         user = data.get("user")
         yield "id", user.get("id")
         yield "email", user.get("email")
@@ -1249,6 +1227,7 @@ class MicrosoftClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse user data."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "username", data.get("displayName")
         yield "first_name", data.get("givenName")
@@ -1272,6 +1251,7 @@ class GitlabClient(OAuth2Client):
     @staticmethod
     def user_parse(data):
         """Parse information from provider."""
+        assert isinstance(data, dict)
         yield "id", data.get("id")
         yield "email", data.get("email")
         first_name, _, last_name = (data.get("name") or "").partition(" ")
@@ -1286,6 +1266,29 @@ class GitlabClient(OAuth2Client):
             yield "country", split_location[0].strip()
             if len(split_location) > 1:
                 yield "city", split_location[1].strip()
+
+
+class MTSClient(OAuth2Client):
+    """Support MTS.
+
+    * Docs: https://developers.mts.ru/mts-id/documentation/tehnicheskoe-opisanie-integratsii
+    """
+
+    name = "mts"
+    base_url = "https://login.mts.ru/amserver/oauth2"
+    authorize_url = f"{base_url}/authorize"
+    access_token_url = f"{base_url}/access_token"
+    user_info_url = f"{base_url}/userinfo"
+
+    @staticmethod
+    def user_parse(data):
+        assert isinstance(data, dict)
+        yield "phone", data.get("phone")
+        yield "country", data.get("country")
+        yield "first_name", data.get("first_name")
+        yield "last_name", data.get("given_name")
+        yield "gender", data.get("gender")
+        yield "birthday", data.get("birthday")
 
 
 # ruff: noqa: S105
