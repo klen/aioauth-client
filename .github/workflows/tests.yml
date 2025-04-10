@@ -41,17 +41,3 @@ jobs:
 
     - name: Test with pytest
       run: poetry run pytest tests
-
-  notify:
-    runs-on: ubuntu-latest
-    needs: tests
-    steps:
-
-    - name: Notify slack
-      uses: rtCamp/action-slack-notify@master
-      env:
-        SLACK_CHANNEL: C2CRL4C4V
-        SLACK_USERNAME: Github
-        SLACK_FOOTER: ""
-        SLACK_COLOR: ${{ job.status }}
-        SLACK_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

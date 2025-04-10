@@ -19,19 +19,3 @@ jobs:
       run: poetry config pypi-token.pypi ${{ secrets.pypy }}
     - name: Build and publish
       run: poetry publish --build
-
-  notify:
-    runs-on: ubuntu-latest
-    needs: publish
-    steps:
-
-    - name: Notify slack
-      uses: rtCamp/action-slack-notify@master
-      env:
-        SLACK_CHANNEL: monitoring
-        SLACK_USERNAME: Github
-        SLACK_FOOTER: ""
-        SLACK_MESSAGE_ON_SUCCESS: "Build for `${{ github.event.workflow_run.head_branch }}` branch is successful. <${{ github.event.workflow_run.head_repository.html_url }}/actions/runs/${{ github.run_id }}|View Run>"
-        SLACK_MESSAGE_ON_FAILURE: "Build for `${{ github.event.workflow_run.head_branch }}` branch is failed. <${{ github.event.workflow_run.head_repository.html_url }}/actions/runs/${{ github.run_id }}|View Run>"
-        SLACK_COLOR: ${{ job.status }}
-        SLACK_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
