@@ -50,7 +50,7 @@ jobs:
     - name: Notify slack
       uses: rtCamp/action-slack-notify@master
       env:
-        SLACK_CHANNEL: monitoring
+        SLACK_CHANNEL: C2CRL4C4V
         SLACK_USERNAME: Github
         SLACK_FOOTER: ""
         SLACK_COLOR: ${{ job.status }}
