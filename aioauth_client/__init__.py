@@ -141,10 +141,10 @@ class Client(object, metaclass=ClientRegistry):
         self.logger = logger or logging.getLogger("OAuth: %s" % self.name)
         self.transport = transport
 
-    def _get_url(self, url: str) -> str:
+    def urljoin(self, url: str) -> str:
         """Build provider's url. Join with base_url part if needed."""
         if self.base_url and not url.startswith(("http://", "https://")):
-            return urljoin(self.base_url, url)
+            return urljoin(f"{self.base_url}/", url)
         return url
 
     def __str__(self) -> str:
@@ -275,7 +275,7 @@ class OAuth1Client(Client):
         if self.oauth_token:
             oparams["oauth_token"] = self.oauth_token
 
-        url = self._get_url(url)
+        url = self.urljoin(url)
 
         if urlsplit(url).query:
             raise ValueError(
@@ -385,7 +385,7 @@ class OAuth2Client(Client):
         **options,
     ) -> Awaitable[TRes]:
         """Request OAuth2 resource."""
-        url = self._get_url(url)
+        url = self.urljoin(url)
         headers = headers or {
             "Accept": "application/json",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
