@@ -9,6 +9,7 @@ from aioauth_client import (
     OAuthError,
     Plurk,
     SlackClient,
+    TodoistClient,
     TumblrClient,
     User,
 )
@@ -84,3 +85,20 @@ def test_public_api_reexports_everything():
 
     for name in aioauth_client.__all__:
         assert getattr(aioauth_client, name) is not None
+
+
+def test_todoist_v1_profile():
+    data = {
+        "id": "1",
+        "email": "user@example.com",
+        "full_name": "Jane Doe",
+        "avatar_big": "avatar",
+        "lang": "en",
+    }
+    user = dict(TodoistClient.user_parse(data))
+    assert user["id"] == "1"
+    assert user["email"] == "user@example.com"
+    assert user["first_name"] == "Jane"
+    assert user["last_name"] == "Doe"
+    assert user["picture"] == "avatar"
+    assert user["locale"] == "en"
