@@ -41,6 +41,7 @@ example = ["asgi-sessions", "asgi-tools", "uvicorn"]
 
 [tool.pytest.ini_options]
 addopts = "-svx --mypy"
+testpaths = ["tests"]
 
 [tool.mypy]
 packages = ["aioauth_client"]
