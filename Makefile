@@ -18,20 +18,19 @@ clean:
 # =============
 
 VIRTUAL_ENV ?= .venv
-$(VIRTUAL_ENV): pyproject.toml
-	@poetry install --with dev,example
-	@poetry self add poetry-bumpversion
-	@poetry run pre-commit install
+$(VIRTUAL_ENV): pyproject.toml uv.lock
+	@uv sync --all-groups
+	@uv run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
 .PHONY: t test
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)
-	@poetry run pytest -xsv --mypy tests
+	@uv run pytest -xsv --mypy tests
 
 .PHONY: mypy
 mypy:
-	@poetry run mypy aioauth_client
+	@uv run mypy aioauth_client
 
 OPEN := $(shell command -v open 2> /dev/null)
 open:
@@ -41,7 +40,7 @@ ifdef OPEN
 endif
 
 server: $(VIRTUAL_ENV)
-	@poetry run uvicorn --reload --port 8080 example.app:app
+	@uv run uvicorn --reload --port 8080 example.app:app
 
 .PHONY: example
 example:
@@ -55,10 +54,10 @@ example:
 VERSION?=minor
 # target: release - Bump version
 release: $(VIRTUAL_ENV)
-	@$(eval VFROM := $(shell poetry version -s))
-	@poetry version $(VERSION)
-	@git commit -am "Bump version $(VFROM) → `poetry version -s`"
-	@git tag `poetry version -s`
+	@$(eval VFROM := $(shell uv version --short))
+	@uv version --bump $(VERSION) --no-sync
+	@git commit -am "Bump version $(VFROM) → `uv version --short`"
+	@git tag `uv version --short`
 	@git checkout master
 	@git merge develop
 	@git checkout develop

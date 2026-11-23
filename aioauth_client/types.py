@@ -1,7 +1,5 @@
-from __future__ import annotations
+"""Type aliases for provider responses."""
 
-from typing import Dict, List, Optional, Union
-
-TRes = Union[Dict[str, "TRes"], List["TRes"], str, int, float, bool, None]
-THeaders = Dict[str, str]
-TParams = Dict[str, Optional[str]]
+TRes = dict[str, "TRes"] | list["TRes"] | str | int | float | bool | None
+THeaders = dict[str, str]
+TParams = dict[str, str | None]

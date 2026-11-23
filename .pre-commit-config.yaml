@@ -31,27 +31,26 @@ repos:
   - id: trailing-whitespace
     stages: ["pre-commit"]
 
-- repo: https://github.com/psf/black
-  rev: 24.4.2
-  hooks:
-  - id: black
-
-- repo: https://github.com/python-poetry/poetry
-  rev: '1.8.0'
-  hooks:
-  - id: poetry-check
-    files: ^(.*/)?pyproject\.toml$
-    stages: ["pre-commit"]
-  - id: poetry-lock
-    files: ^(.*/)?(poetry\.lock|pyproject\.toml)$
-    args: ["--no-update"]
-    stages: ["pre-commit"]
-
 - repo: local
   hooks:
+  - id: uv-lock
+    name: uv-lock
+    entry: uv lock --check
+    language: system
+    pass_filenames: false
+    files: ^(.*/)?(uv\.lock|pyproject\.toml)$
+    stages: ["pre-commit"]
+
+  - id: ruff-format
+    name: ruff-format
+    entry: uv run ruff format
+    language: system
+    files: \.py$
+    stages: ["pre-commit"]
+
   - id: ruff
     name: ruff
-    entry: poetry run ruff check aioauth_client
+    entry: uv run ruff check aioauth_client
     language: system
     pass_filenames: false
     files: \.py$
@@ -59,7 +58,7 @@ repos:
 
   - id: mypy
     name: mypy
-    entry: poetry run mypy
+    entry: uv run mypy
     language: system
     pass_filenames: false
     files: \.py$
@@ -67,7 +66,7 @@ repos:
 
   - id: pytest
     name: pytest
-    entry: poetry run pytest
+    entry: uv run pytest
     language: system
     pass_filenames: false
     files: \.py$

@@ -11,13 +11,12 @@ Run the example with uvicorn:
 
 """
 
-
 import html
 from pprint import pformat
 
 from asgi_tools import App, ResponseRedirect
 
-from aioauth_client import ClientRegistry, GithubClient, OAuth1Client
+from aioauth_client import ClientRegistry, OAuth1Client
 
 from .config import CREDENTIALS
 
@@ -91,41 +90,22 @@ async def oauth(request):
             href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
         <div class="container">
             <header class="navbar navbar-dark" style="background-color: #7952b3">
-                <h2 class="navbar-brand">AIOAuth Client Example ({ client.name })</h2>
+                <h2 class="navbar-brand">AIOAuth Client Example ({client.name})</h2>
             </header>
             <a class="btn btn-primary mt-4" href='/'>Return back</a>
             <table class="table mt-4">
-                <tr><td> ID </td><td> { user.id } </td></tr>
-                <tr><td> Username </td><td> { user.username } </td></tr>
-                <tr><td>First, last name</td><td>{ user.first_name }, { user.last_name }</td></tr>
-                <tr><td>Gender</td><td> { user.gender } </td></tr>
-                <tr><td>Email</td><td> { user.email } </td></tr>
-                <tr><td>Link</td><td> { user.link } </td></tr>
-                <tr><td>Picture</td><td> { user.picture } </td></tr>
-                <tr><td>Country, City</td><td> { user.country }, { user.city } </td></tr>
+                <tr><td> ID </td><td> {user.id} </td></tr>
+                <tr><td> Username </td><td> {user.username} </td></tr>
+                <tr><td>First, last name</td><td>{user.first_name}, {user.last_name}</td></tr>
+                <tr><td>Gender</td><td> {user.gender} </td></tr>
+                <tr><td>Email</td><td> {user.email} </td></tr>
+                <tr><td>Link</td><td> {user.link} </td></tr>
+                <tr><td>Picture</td><td> {user.picture} </td></tr>
+                <tr><td>Country, City</td><td> {user.country}, {user.city} </td></tr>
             </table>
             <h3 class="mt-4">Raw data</h3>
-            <pre>{ html.escape(pformat(info)) }</pre>
-            <pre>{ html.escape(pformat(meta)) }</pre>
+            <pre>{html.escape(pformat(info))}</pre>
+            <pre>{html.escape(pformat(meta))}</pre>
         <div>
         """
     return text
-
-
-# Simple Github (OAuth2) example (not connected to app)
-async def github(request):
-    github = GithubClient(
-        client_id="b6281b6fe88fa4c313e6",
-        client_secret="21ff23d9f1cad775daee6a38d230e1ee05b04f7c",  # noqa:
-    )
-    if "code" not in request.url.query:
-        return ResponseRedirect(github.get_authorize_url(scope="user:email"))
-
-    # Get access token
-    code = request.url.query["code"]
-    token, _ = await github.get_access_token(code)
-    assert token
-
-    # Get a resource `https://api.github.com/user`
-    response = await github.request("GET", "user")
-    return await response.read()

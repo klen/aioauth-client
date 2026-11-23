@@ -1,43 +1,73 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: tests
 
 on:
+  push:
+    branches: [master, develop]
   pull_request:
     branches: [master, develop]
 
-  push:
-    branches: [master, develop]
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
 
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.4.0
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: uv sync --locked --group dev
+
+    - name: Check formatting
+      run: uv run --locked ruff format --check .
+
+    - name: Check code
+      run: uv run --locked ruff check aioauth_client
+
+    - name: Check typing
+      run: uv run --locked mypy
+
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
 
     steps:
-    - uses: actions/checkout@main
-    - name: install poetry
-      run: pipx install poetry
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.4.0
+      with:
+        enable-cache: true
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@main
+      uses: actions/setup-python@v7
       with:
-        cache: poetry
         python-version: ${{ matrix.python-version }}
 
-    - name: Setup requirements
-      run: poetry install --with dev
-
-    - name: Check code
-      run: poetry run ruff check aioauth_client
-
-    - name: Check typing
-      run: poetry run mypy
+    - name: Install dependencies
+      run: uv sync --locked --group dev
 
     - name: Test with pytest
-      run: poetry run pytest tests
+      run: uv run --locked pytest tests

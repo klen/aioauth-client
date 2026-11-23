@@ -1,21 +1,44 @@
 name: release
 
 on:
-  workflow_run:
-    workflows: [tests]
-    branches: [master]
-    types: [completed]
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
 
   publish:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 10
+    environment: pypi
+
     steps:
-    - uses: actions/checkout@main
-    - name: Install poetry
-      run: pipx install poetry
-    - name: Setup poetry
-      run: poetry config pypi-token.pypi ${{ secrets.pypy }}
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.4.0
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: uv sync --locked --group dev
+
+    - name: Test
+      run: uv run --locked pytest tests
+
     - name: Build and publish
-      run: poetry publish --build
+      run: uv build && uv publish
+      env:
+        # Prefer PyPI trusted publishing (OIDC) once configured on PyPI.
+        UV_PUBLISH_TOKEN: ${{ secrets.pypy }}

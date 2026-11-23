@@ -7,15 +7,22 @@ updates:
     labels:
       - dependencies
       - autosquash
+    groups:
+      github-actions:
+        patterns: ["*"]
     schedule:
       interval: "weekly"
 
   # Maintain dependencies for Python
-  - package-ecosystem: "pip"
-    directory: "/requirements"
+  - package-ecosystem: "uv"
+    directory: "/"
     labels:
       - dependencies
       - autosquash
+    groups:
+      python-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10

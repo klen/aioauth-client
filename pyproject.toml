@@ -1,12 +1,10 @@
-[tool.poetry]
+[project]
 name = "aioauth-client"
 version = "0.30.1"
 description = "OAuth support for Asyncio/Trio libraries"
-readme = "README.rst"
-homepage = "https://github.com/klen/aioauth-client"
-repository = "https://github.com/klen/aioauth-client"
-authors = ["Kirill Klenov <horneds@gmail.com>"]
+readme = "README.md"
 license = "MIT"
+authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 keywords = ["asyncio", "trio", "oauth"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -14,32 +12,32 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Internet :: WWW/HTTP",
 ]
-packages = [{ include = "aioauth_client" }]
+requires-python = ">=3.11"
+dependencies = ["httpx"]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-httpx = "*"
+[project.urls]
+Homepage = "https://github.com/klen/aioauth-client"
+Repository = "https://github.com/klen/aioauth-client"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-pytest-aio = "*"
-pytest-mypy = "*"
-ruff = "*"
-pre-commit = "*"
-trio = "*"
-
-[tool.poetry.group.example.dependencies]
-asgi-tools = "*"
-asgi-sessions = "*"
-uvicorn = "*"
+[dependency-groups]
+dev = [
+  "mypy",
+  "pre-commit",
+  "pytest",
+  "pytest-aio",
+  "pytest-mypy",
+  "ruff",
+  "trio",
+]
+example = ["asgi-sessions", "asgi-tools", "uvicorn"]
 
 [tool.pytest.ini_options]
 addopts = "-svx --mypy"
@@ -47,27 +45,15 @@ addopts = "-svx --mypy"
 [tool.mypy]
 packages = ["aioauth_client"]
 ignore_missing_imports = true
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py39,py310,py311,py312,py313
-
-[testenv]
-deps =
-  -e .
-  pytest
-  pytest-aio
-  pytest-mypy
-  trio
-commands =
-	pytest tests
-"""
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+strict_equality = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
-exclude = [".venv", "docs", "examples"]
+target-version = "py311"
+exclude = [".venv", "docs", "example"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -75,25 +61,30 @@ ignore = [
   "A003",
   "ANN",
   "COM812",
+  "CPY001",
   "D",
   "DJ",
   "EM",
   "N804",
   "PLR0912",
+  "PLR0917",
   "PLR2004",
   "RET",
   "RSE",
+  "RUF023",
   "S101",
   "SLF",
+  "TC006",
   "TRY003",
   "UP",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ["py310", "py311", "py312", "py313"]
-preview = true
+[tool.ruff.lint.per-file-ignores]
+# Endpoint URLs and token field names, not credentials.
+"aioauth_client/base.py" = ["S105"]
+"aioauth_client/oauth1.py" = ["S105"]
+"aioauth_client/clients/*.py" = ["S105"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

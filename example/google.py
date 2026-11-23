@@ -79,7 +79,7 @@ def login_required(fn):
         try:
             user, info = await client.user_info()
         except Exception:  # noqa:
-            return ResponseRedirect(CFG.oauth_redirect_path)
+            return ResponseRedirect(CFG.redirect_uri)
 
         return await fn(request, user, **kwargs)
 
@@ -97,10 +97,10 @@ async def index(_, user):
                 <h2 class="navbar-brand">AIOAuth Google Client Example</h2>
             </header>
             <table class="table mt-4">
-                <tr><td> ID </td><td> { user.id } </td></tr>
-                <tr><td>First, last name</td><td>{ user.first_name }, { user.last_name }</td></tr>
-                <tr><td>Email</td><td> { user.email } </td></tr>
-                <tr><td>Picture</td><td> { user.picture } </td></tr>
+                <tr><td> ID </td><td> {user.id} </td></tr>
+                <tr><td>First, last name</td><td>{user.first_name}, {user.last_name}</td></tr>
+                <tr><td>Email</td><td> {user.email} </td></tr>
+                <tr><td>Picture</td><td> {user.picture} </td></tr>
             </table>
         <div>
         """
