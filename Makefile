@@ -58,10 +58,10 @@ release: $(VIRTUAL_ENV)
 	@uv version --bump $(VERSION) --no-sync
 	@git commit -am "Bump version $(VFROM) → `uv version --short`"
 	@git tag `uv version --short`
-	@git checkout master
+	@git checkout main
 	@git merge develop
 	@git checkout develop
-	@git push origin develop master
+	@git push origin develop main
 	@git push --tags
 
 .PHONY: minor

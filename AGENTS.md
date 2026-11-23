@@ -90,7 +90,7 @@ make mypy
 ## High-risk commands
 
 - `make release`, `make minor`, `make patch`, `make major` — bump the version,
-  commit, tag, merge `develop` into `master`, and push branches and tags.
+  commit, tag, merge `develop` into `main`, and push branches and tags.
   Never run these unless the user explicitly asks for a release.
 - `uv publish` / the `release` GitHub workflow publishes to PyPI.
   Do not publish from a local checkout.
@@ -123,7 +123,7 @@ make mypy
   `request`, or token handling.
 - Add or extend a test in `tests/` for behavior changes (the suite is small and
   fast). Finish with ruff + mypy + pytest.
-- Branch flow is `develop` -> `master`; `master` is release-only.
+- Branch flow is `develop` -> `main`; `main` is release-only.
   `.github/workflows/release.yml` publishes on version tags (`make release`
   pushes them) after running the tests in the tag.
 - Keep `README.md` and `Changelog` updated only when user-facing behavior or
