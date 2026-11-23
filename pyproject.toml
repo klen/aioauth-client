@@ -1,6 +1,6 @@
 [project]
 name = "aioauth-client"
-version = "0.30.1"
+version = "1.0.0"
 description = "OAuth support for Asyncio/Trio libraries"
 readme = "README.md"
 license = "MIT"
