@@ -95,6 +95,17 @@ timeline = await twitter.request("GET", "statuses/home_timeline.json")
 `get_access_token()` stores the new `oauth_token`/`oauth_token_secret` on the
 instance as well, and checks the request token when one is passed.
 
+For web apps, pass `oauth_callback` when requesting the token and read
+`oauth_verifier` from the callback query instead of asking for a PIN:
+
+```python
+request_token, _ = await twitter.get_request_token(
+    oauth_callback="https://app.example/oauth/twitter",
+)
+# The provider redirects to oauth_callback?oauth_token=...&oauth_verifier=...
+token, data = await twitter.get_access_token(verifier_from_callback)
+```
+
 ### Responses and errors
 
 `request()` returns parsed data, not an `httpx.Response`:
