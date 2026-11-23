@@ -25,6 +25,9 @@ packaged and locked with uv (`uv.lock` is committed).
 - `example/` — optional ASGI demo app (needs the `example` uv dependency group),
   not part of the library.
 - `.github/workflows/tests.yml` — CI: ruff, mypy, pytest on Python 3.11-3.15.
+- `.github/workflows/dependabot-automerge.yml` — squash-merges Dependabot
+  patch/minor and security PRs into `develop` after the `tests` workflow passes;
+  major bumps stay for a human.
 - `Makefile`, `pyproject.toml`, `uv.lock`, `.pre-commit-config.yaml`,
   `README.md`, `Changelog` (plain text, hand-written).
 

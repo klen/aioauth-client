@@ -1,0 +1,58 @@
+name: dependabot-automerge
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'develop' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Read Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Merge patch/minor and security updates once the tests workflow passed.
+    # Major version bumps are left for a human.
+    - name: Wait for CI and merge
+      if: >-
+        !contains(steps.metadata.outputs.update-type, 'semver-major') ||
+        steps.metadata.outputs.alert-state != ''
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.event.pull_request.head.sha }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        run_id=""
+        for _ in $(seq 1 60); do
+          run_id=$(gh api \
+            "repos/$REPO/actions/workflows/tests.yml/runs?head_sha=$SHA&event=pull_request" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -n "$run_id" ]; then break; fi
+          sleep 10
+        done
+        if [ -z "$run_id" ]; then
+          echo "::error::tests workflow for $SHA not found"
+          exit 1
+        fi
+        gh run watch "$run_id" --exit-status --interval 10
+        gh pr merge "$PR" --squash --delete-branch
